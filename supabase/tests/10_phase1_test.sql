@@ -194,6 +194,14 @@ $$, '42501');
 reset role;
 select tests.as_user('00000000-0000-0000-0000-00000000000a', 'ana@example.com');
 set role authenticated;
+select tests.check('photo limit is off by default',
+  public.photo_quota() ->> 'limit' is null and public.can_upload_photo());
+select tests.expect_error('clients cannot change app settings', $$
+  update public.app_settings set value = 'null' where key = 'free_photo_limit'
+$$, '42501');
+reset role;
+update public.app_settings set value = '30' where key = 'free_photo_limit';
+set role authenticated;
 
 do $$
 begin
