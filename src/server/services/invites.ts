@@ -19,7 +19,7 @@ export function tokenParam(token: string): string {
   return token;
 }
 
-export const inviteUrl = (appUrl: string, token: string) => `${appUrl}/invite/${token}`;
+export const inviteUrl = (appUrl: string, token: string) => `${appUrl}/invite?token=${token}`;
 
 type PublicInvitation = Omit<Invitation, "token"> & { url: string | null };
 

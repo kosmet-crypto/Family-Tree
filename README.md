@@ -11,8 +11,8 @@ Stack: Next.js (App Router, TypeScript), Tailwind + shadcn/ui, React Flow, Supab
 - [x] Phase 1: database schema, RLS, triggers (`supabase/migrations`)
 - [x] Phase 2: TypeScript business logic and validation (`src/lib`)
 - [x] Phase 3: API routes (invites, backup/restore, RevenueCat) (`src/app/api`, `src/server`)
-- [ ] Phase 4: mobile UI
-- [ ] Phase 5: PWA, Capacitor, OTA updates
+- [x] Phase 4: mobile UI (`src/app`, `src/components`, `src/client`)
+- [x] Phase 5: PWA, Capacitor Android app, OTA updates, backup UI
 
 ## Database (Phase 1)
 
@@ -125,6 +125,53 @@ npm run dev
 # tests against a real database (PostgreSQL + PostgREST, no Supabase needed)
 scripts/get-postgrest.sh
 PGHOST=localhost PGUSER=postgres npm run test:integration
+```
+
+## App (Phases 4–5)
+
+**Try it:** https://kosmet-crypto.github.io/Family-Tree/ (after the `pages` workflow has run on
+`main`), or the APK from the latest GitHub Release.
+
+Without Supabase settings the app runs in **local mode**: everything is stored in the browser /
+phone (IndexedDB), JSON backups include the photos. With `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` it switches to **cloud mode**: sign-in, sync, Realtime, sharing.
+
+| Screen | What |
+|---|---|
+| `/` | trees, create, import backup |
+| `/tree?id=` | interactive tree (pan / pinch-zoom, search with fly-to), list by generations, person card (relation to "me", relatives, photos), add parent / partner / child / sibling or link an existing person, Simple / Complex entry model, sharing (cloud) |
+| `/settings` | entry model, backup (JSON; ZIP with photos in cloud), import, plan, **About** with the developer credit |
+| `/login`, `/invite?token=` | cloud mode sign-in and invitations |
+
+Layout: `src/client/layout.ts` (one row per generation, partners side by side, children under
+their parents). Data access: `src/client/repo` (`local.ts` IndexedDB, `cloud.ts` Supabase).
+
+### PWA
+`app/manifest.ts`, `public/sw.js` (offline app shell, new version on every deploy), iOS meta
+tags: in Safari use Share → "Add to Home Screen".
+
+### Android (Capacitor)
+- `npm run build:static` builds the UI into `out/` (API routes are left out; in cloud mode the
+  app calls them at `NEXT_PUBLIC_API_BASE`).
+- `.github/workflows/android.yml` builds a signed APK and publishes a Release `v1.0.<run>` on
+  every push to `main`.
+- **OTA / rich updates (test phase):** the APK is built with `CAP_LIVE_URL` = the GitHub Pages
+  URL, so it always loads the latest web version; a new APK is only needed for native changes.
+  **For Google Play** set the repository variable `OTA=false`: the web app is bundled and
+  updates go through the store. The committed test key `android/app/roots-branches.keystore`
+  keeps updates installable; for Play use Play App Signing with your own upload key
+  (`ANDROID_KEYSTORE_*` env variables).
+- In-app purchases: RevenueCat (`@revenuecat/purchases-capacitor`), enabled when
+  `NEXT_PUBLIC_REVENUECAT_ANDROID_KEY` is set.
+
+Full web + API hosting (for cloud mode) needs a Next.js host, e.g. Vercel: import the repo and set
+the variables from `.env.example`.
+
+```bash
+npm run dev                  # http://localhost:3000 (local mode without .env.local)
+npm run build:static         # static UI in out/
+node scripts/serve-static.mjs 3200 && BASE_URL=http://localhost:3200 npm run test:e2e
+npx cap sync android         # after build:static; open android/ in Android Studio
 ```
 
 ## About

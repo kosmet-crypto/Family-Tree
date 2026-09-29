@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#2f6b4f"/>
+  <g fill="none" stroke="#f7f4ee" stroke-linecap="round" stroke-linejoin="round">
+    <!-- trunk -->
+    <path d="M256 300 V384" stroke-width="30"/>
+    <!-- branches -->
+    <path d="M256 300 C256 250 200 230 176 196" stroke-width="22"/>
+    <path d="M256 300 C256 250 312 230 336 196" stroke-width="22"/>
+    <path d="M256 290 V170" stroke-width="22"/>
+    <!-- roots -->
+    <path d="M256 384 C236 404 206 410 176 414" stroke-width="16"/>
+    <path d="M256 384 C276 404 306 410 336 414" stroke-width="16"/>
+  </g>
+  <!-- people / leaves -->
+  <g fill="#f2c38b">
+    <circle cx="170" cy="176" r="36"/>
+    <circle cx="342" cy="176" r="36"/>
+    <circle cx="256" cy="134" r="40"/>
+  </g>
+</svg>

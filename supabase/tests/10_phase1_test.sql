@@ -116,6 +116,18 @@ select tests.check('Marko & Nikola are half siblings',
 select tests.check('Marko & Luka are step siblings',
   (select sibling_type from public.person_siblings
     where person_id = '20000000-0000-0000-0000-000000000005' and sibling_id = '20000000-0000-0000-0000-000000000008') = 'step');
+select tests.check('a step edge makes step siblings',
+  (select sibling_type from public.person_siblings
+    where person_id = '20000000-0000-0000-0000-000000000007' and sibling_id = '20000000-0000-0000-0000-000000000008') = 'step');
+insert into public.persons (id, tree_id, first_name) values
+  ('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001', 'Ana');
+insert into public.parent_child (tree_id, parent_id, child_id) values
+  ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000009');
+select tests.check('Nikola (Jovan+Sanja) and Ana (Sanja only) are half siblings, Ana sees Nikola as half too',
+  (select array_agg(sibling_type order by person_id) from public.person_siblings
+    where (person_id, sibling_id) in (('20000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000009'),
+                                      ('20000000-0000-0000-0000-000000000009', '20000000-0000-0000-0000-000000000007'))) = array['half', 'half']);
+delete from public.persons where id = '20000000-0000-0000-0000-000000000009';
 select tests.check('ancestors of Marko = 5 (2 parents, adoptive, 2 grandparents)',
   (select count(*) from public.get_ancestors('20000000-0000-0000-0000-000000000005')) = 5);
 select tests.check('descendants of Milan = 4',

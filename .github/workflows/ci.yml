@@ -21,6 +21,26 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Static build (GitHub Pages layout)
+        run: npm run build:static
+        env:
+          NEXT_PUBLIC_BASE_PATH: /Family-Tree
+          NEXT_PUBLIC_APP_VERSION: ci
+      - name: UI end-to-end (local mode, phone viewport)
+        run: |
+          node scripts/serve-static.mjs 3200 /Family-Tree &
+          sleep 1
+          BASE_URL=http://localhost:3200/Family-Tree CHROMIUM_PATH=$(which google-chrome || which chromium) npm run test:e2e
+
   db-tests:
     runs-on: ubuntu-latest
     services:
