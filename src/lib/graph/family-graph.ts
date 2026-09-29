@@ -43,9 +43,11 @@ export class FamilyGraph {
 
   constructor(
     persons: readonly Person[],
-    parentChild: readonly ParentChild[] = [],
-    partnerships: readonly Partnership[] = [],
+    private readonly parentChildRows: readonly ParentChild[] = [],
+    private readonly partnershipRows: readonly Partnership[] = [],
   ) {
+    const parentChild = parentChildRows;
+    const partnerships = partnershipRows;
     for (const p of persons) this.persons.set(p.id, p);
     for (const e of parentChild) {
       if (!this.persons.has(e.parent_id) || !this.persons.has(e.child_id)) continue;
@@ -57,6 +59,11 @@ export class FamilyGraph {
       push(this.partnerEdges, pa.person1_id, pa);
       push(this.partnerEdges, pa.person2_id, pa);
     }
+  }
+
+  /** A copy of the graph with one more (not yet saved) person, for validating a new entry. */
+  withPerson(person: Person): FamilyGraph {
+    return new FamilyGraph([...this.persons.values(), person], this.parentChildRows, this.partnershipRows);
   }
 
   person(id: Uuid): Person | undefined {
@@ -116,7 +123,10 @@ export class FamilyGraph {
     }
     const out: SiblingInfo[] = [];
     for (const [sid, e] of result) {
-      const type: SiblingType = e.bio >= 2 ? "full" : e.bio === 1 ? "half" : e.adoptive ? "adoptive" : "step";
+      const type: SiblingType =
+        e.bio >= 2 ? "full"
+        : e.bio === 1 ? (this.hasOtherBioParent(id, sid) || this.hasOtherBioParent(sid, id) ? "half" : "full")
+        : e.adoptive ? "adoptive" : "step";
       out.push({ person: this.persons.get(sid)!, type, sharedParentIds: e.shared });
     }
     // Step-siblings via marriage: children of my parents' partners who share no parent with me.
@@ -131,6 +141,15 @@ export class FamilyGraph {
       }
     }
     return out;
+  }
+
+  /**
+   * a has a known biological parent that b does not have. Two siblings sharing their only known
+   * parent are shown as full siblings (the other parent is just not entered yet).
+   */
+  hasOtherBioParent(a: Uuid, b: Uuid): boolean {
+    const bParents = new Set(this.parentEdgesOf(b).filter((e) => e.relation === "biological").map((e) => e.parent_id));
+    return this.parentEdgesOf(a).some((e) => e.relation === "biological" && !bParents.has(e.parent_id));
   }
 
   /** Ancestors with their (shortest) distance in generations. */

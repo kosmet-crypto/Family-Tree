@@ -1,0 +1,65 @@
+# Android APK (Capacitor). Every push to main publishes a GitHub Release v1.0.<run> with the APK.
+# OTA (test phase): the APK loads the latest web app from GitHub Pages, so web changes reach
+# installed apps without a new APK. For a Google Play build set repository variable OTA=false:
+# the web app is then bundled inside the APK/AAB.
+name: android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.0.${{ github.run_number }}
+      OTA_URL: ${{ vars.OTA != 'false' && format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Static build (bundled fallback)
+        run: npm run build:static
+        env:
+          NEXT_PUBLIC_APP_VERSION: ${{ env.VERSION_NAME }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_BASE: ${{ vars.NEXT_PUBLIC_API_BASE }}
+          NEXT_PUBLIC_REVENUECAT_ANDROID_KEY: ${{ vars.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY }}
+      - name: Capacitor sync
+        run: npx cap sync android
+        env:
+          CAP_LIVE_URL: ${{ env.OTA_URL }}
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk "roots-branches-${VERSION_NAME}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roots-branches-apk
+          path: roots-branches-*.apk
+      - name: Publish release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION_NAME }}
+          name: Roots & Branches ${{ env.VERSION_NAME }}
+          body: |
+            Android APK ${{ env.VERSION_NAME }} (${{ env.OTA_URL && 'OTA: loads the latest web app from GitHub Pages' || 'bundled web app' }}).
+            Install: download the APK on the phone and allow installing from this source.
+          files: roots-branches-*.apk

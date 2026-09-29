@@ -70,7 +70,9 @@ function bloodKinship(graph: FamilyGraph, aId: Uuid, bId: Uuid): Kinship | null 
 
   // Half relation: the two lines meet in only one of a couple (only matters for siblings / their lines).
   const commonAtLevel = [...la].filter(([id, up]) => up === best!.up && lb.get(id) === best!.down).length;
-  const half = best.up > 0 && best.down > 0 && commonAtLevel < 2;
+  // Only called "half" when a second, different parent is actually known on one side.
+  const half = best.up === 1 && best.down === 1 && commonAtLevel < 2
+    && (graph.hasOtherBioParent(aId, bId) || graph.hasOtherBioParent(bId, aId));
 
   // Gender of A's parent on the path (стриц vs ујак) and of B's parent on the path (синовац vs сестрић).
   const viaGender = best.up >= 2 ? parentOnPath(graph, aId, best.ancestor, best.up)?.gender ?? "unknown" : "unknown";

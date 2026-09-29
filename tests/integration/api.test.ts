@@ -89,10 +89,10 @@ describe("invitations and members", () => {
   it("owner creates an invitation link", async () => {
     const r = await call(invites.POST, { method: "POST", token: ana.token, json: { email: "Boris@Example.com", role: "editor" }, params: { treeId } });
     expect(r.status).toBe(201);
-    expect(r.body.invite.url).toMatch(/^https:\/\/app\.test\/invite\/[0-9a-f]{48}$/);
+    expect(r.body.invite.url).toMatch(/^https:\/\/app\.test\/invite\?token=[0-9a-f]{48}$/);
     expect(r.body.invite).not.toHaveProperty("token");
     expect(r.body.invite.email).toBe("boris@example.com");
-    token = r.body.invite.url.split("/").pop();
+    token = r.body.invite.url.split("token=")[1];
     const list = await call(invites.GET, { token: ana.token, params: { treeId } });
     expect(list.body.invites).toHaveLength(1);
   });
@@ -120,7 +120,7 @@ describe("invitations and members", () => {
 
   it("revoked links stop working", async () => {
     const r = await call(invites.POST, { method: "POST", token: ana.token, json: {}, params: { treeId } });
-    const t = r.body.invite.url.split("/").pop();
+    const t = r.body.invite.url.split("token=")[1];
     expect((await call(invite.DELETE, { method: "DELETE", token: ana.token, params: { treeId, inviteId: r.body.invite.id } })).status).toBe(200);
     expect((await call(invite.DELETE, { method: "DELETE", token: ana.token, params: { treeId, inviteId: r.body.invite.id } })).status).toBe(404);
     expect((await call(accept.POST, { method: "POST", token: ceca.token, params: { token: t } })).body.error).toBe("invite_not_pending");
@@ -234,7 +234,7 @@ describe("merge", () => {
   it("merges a tree the user edits into another, linking duplicates", async () => {
     // Ceca's imported copy -> invite Ceca as editor of Ana's tree, then merge the copy into it.
     const inv = await call(invites.POST, { method: "POST", token: ana.token, json: { role: "editor" }, params: { treeId } });
-    await call(accept.POST, { method: "POST", token: ceca.token, params: { token: inv.body.invite.url.split("/").pop() } });
+    await call(accept.POST, { method: "POST", token: ceca.token, params: { token: inv.body.invite.url.split("token=")[1] } });
     const db = asUser(ceca);
     const copy = await db.from("trees").select("id").eq("name", "Kopija").single();
     const src = await db.from("persons").select("id, first_name").eq("tree_id", copy.data!.id);
