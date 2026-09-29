@@ -10,7 +10,7 @@ Stack: Next.js (App Router, TypeScript), Tailwind + shadcn/ui, React Flow, Supab
 
 - [x] Phase 1: database schema, RLS, triggers (`supabase/migrations`)
 - [x] Phase 2: TypeScript business logic and validation (`src/lib`)
-- [ ] Phase 3: API routes (invites, backup/restore, RevenueCat)
+- [x] Phase 3: API routes (invites, backup/restore, RevenueCat) (`src/app/api`, `src/server`)
 - [ ] Phase 4: mobile UI
 - [ ] Phase 5: PWA, Capacitor, OTA updates
 
@@ -25,6 +25,7 @@ Stack: Next.js (App Router, TypeScript), Tailwind + shadcn/ui, React Flow, Supab
 | `…500_graph_backup.sql` | `get_ancestors()`, `get_descendants()`, `export_tree()` (JSON), `tree_snapshots`, `create_snapshot()`, `auto_snapshot()`, `restore_tree()`, `merge_trees()` |
 | `…600_rls_grants_realtime.sql` | RLS on every table, column-level grants, Realtime publication |
 | `…700_app_settings.sql` | `app_settings`; `free_photo_limit` (JSON `null` = off, the default during testing) |
+| `…800_billing.sql` | `billing_events` (webhook idempotency), `profiles.plan_event_at`, `apply_plan_change()` (ignores out-of-order events) |
 
 Rules enforced in the database:
 - No cycles (nobody is their own ancestor), at most 2 biological parents, a biological parent is
@@ -85,6 +86,45 @@ npm ci
 npm run typecheck
 npm test               # unit tests (vitest)
 npm run test:browser   # compression in headless Chromium (needs a local Chromium)
+```
+
+## API (Phase 3)
+
+All routes answer JSON errors as `{ "error": "<code>" }`. Auth: Supabase session cookie (web) or
+`Authorization: Bearer <access token>` (Capacitor app). Every call runs as the user, so RLS applies;
+only the RevenueCat webhook/sync use the service role.
+
+| Method & path | Who | What |
+|---|---|---|
+| `GET /api/health` | anyone | liveness |
+| `GET/POST /api/trees/:treeId/invites` | editor+ | list / create invitation (`{ email?, role, message?, expiresInDays? }`) → `url` to share |
+| `DELETE /api/trees/:treeId/invites/:inviteId` | inviter / owner | revoke |
+| `GET /api/invites/:token` | anyone | preview (tree, inviter, role, status) |
+| `POST /api/invites/:token/accept` | signed in | join the tree |
+| `GET /api/trees/:treeId/members` | member | members with names |
+| `PATCH/DELETE /api/trees/:treeId/members/:userId` | owner (or self to leave) | change role / remove |
+| `POST /api/trees/:treeId/merge` | editor of both | `{ sourceTreeId, personMap }` copies another tree in |
+| `GET /api/trees/:treeId/backup?format=json\|zip` | member | download backup (ZIP includes media files) |
+| `POST /api/trees/:treeId/restore` | owner | upload JSON or ZIP (raw body or multipart `file`); a `pre_restore` snapshot is kept |
+| `POST /api/backups/import?name=` | signed in | JSON/ZIP → new tree with new ids and re-uploaded files |
+| `GET/POST /api/trees/:treeId/snapshots` | editor+ | list / create manual snapshot |
+| `POST /api/trees/:treeId/snapshots/:id/restore` | owner | restore a snapshot |
+| `POST /api/trees/:treeId/auto-backup` | editor+ | daily automatic snapshot (call on app start) |
+| `DELETE /api/trees/:treeId/media/:mediaId` | editor+ | delete photo/document row + file |
+| `GET /api/billing` | signed in | plan, expiry, photo quota |
+| `POST /api/billing/sync` | signed in | refresh plan from RevenueCat after a purchase |
+| `POST /api/webhooks/revenuecat` | RevenueCat | subscription events → `profiles.plan` |
+
+RevenueCat setup: use the Supabase user id as RevenueCat `appUserID`; create entitlement
+`premium`; add a webhook to `<app>/api/webhooks/revenuecat` with the Authorization header value
+from `REVENUECAT_WEBHOOK_AUTH`. Google Play / App Store / Stripe (Web Billing) all arrive through it.
+
+```bash
+cp .env.example .env.local   # fill in
+npm run dev
+# tests against a real database (PostgreSQL + PostgREST, no Supabase needed)
+scripts/get-postgrest.sh
+PGHOST=localhost PGUSER=postgres npm run test:integration
 ```
 
 ## About
