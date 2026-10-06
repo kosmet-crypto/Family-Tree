@@ -2,38 +2,38 @@
 import { backupFileName, parseBackup } from "@/lib/backup/schema";
 import { RepoError, type Repo } from "./repo";
 
-/** Family Tree Maker (.ged export, or a zip that contains one) -> new tree. */
-export async function importGedcomFile(repo: Repo, file: File): Promise<string> {
-  const { decodeGedcom, gedcomToBackup } = await import("@/lib/gedcom/import");
-  let buf = await file.arrayBuffer();
-  const head = new Uint8Array(buf, 0, 2);
-  if (head[0] === 0x50 && head[1] === 0x4b) { // "PK": .fbk / .ftmb / .zip
-    const { unzipSync } = await import("fflate");
-    const names: string[] = [];
-    const files = unzipSync(new Uint8Array(buf), { filter: (f) => { names.push(f.name); return /\.ged$/i.test(f.name); } });
-    const ged = Object.values(files)[0];
-    if (!ged) {
-      const inside = names.slice(0, 8).join(", ");
-      throw new RepoError("gedcom_not_found", `Овај backup не садржи GEDCOM (унутра: ${inside}). У Family Tree Maker-у изаберите Датотека > Извези > GEDCOM (.ged) и увезите тај фајл.`);
-    }
-    buf = ged.buffer.slice(ged.byteOffset, ged.byteOffset + ged.byteLength) as ArrayBuffer;
-  }
-  const name = file.name.replace(/\.[^.]+$/, "") || "Увезено стабло";
-  const res = gedcomToBackup(decodeGedcom(buf), name);
+/** GEDCOM text (a Family Tree Maker export) -> new tree. */
+async function importGedcomText(repo: Repo, text: string, fileName: string): Promise<string> {
+  const { gedcomToBackup } = await import("@/lib/gedcom/import");
+  const name = fileName.replace(/\.[^.]+$/, "") || "Увезено стабло";
+  const res = gedcomToBackup(text, name);
   if (!res) throw new RepoError("gedcom_empty", "У фајлу нема ниједне особе.");
   return repo.importJson(res.backup, name);
 }
 
+/** Imports a JSON backup, a ZIP backup or a Family Tree Maker file as a new tree.
+ * The kind is detected from the content, not the name (Android pickers often hide the extension). */
 export async function importBackupFile(repo: Repo, file: File): Promise<string> {
-  if (/\.(ged|fbk|ftmb)$/i.test(file.name)) return importGedcomFile(repo, file);
-  const isZip = file.name.endsWith(".zip") || file.type.includes("zip");
-  if (isZip) {
-    if (repo.mode !== "cloud") throw new RepoError("zip_needs_cloud", "ZIP backup се увози у cloud режиму; у локалном режиму користите JSON.");
-    const { api } = await import("./repo/cloud");
-    const res = await api<{ imported: { treeId: string } }>("/api/backups/import", { method: "POST", body: file, headers: { "content-type": "application/zip" } });
-    return res.imported.treeId;
+  const { decodeGedcom } = await import("@/lib/gedcom/import");
+  const buf = await file.arrayBuffer();
+  const b = new Uint8Array(buf);
+  if (b[0] === 0x50 && b[1] === 0x4b) { // "PK": zip (our ZIP backup, or an .fbk/.ftmb)
+    const { unzipSync } = await import("fflate");
+    const names: string[] = [];
+    const files = unzipSync(b, { filter: (f) => { names.push(f.name); return /\.ged$/i.test(f.name); } });
+    const ged = Object.values(files)[0];
+    if (ged) return importGedcomText(repo, decodeGedcom(ged.buffer.slice(ged.byteOffset, ged.byteOffset + ged.byteLength) as ArrayBuffer), file.name);
+    if (names.some((n) => /\.json$/i.test(n))) {
+      if (repo.mode !== "cloud") throw new RepoError("zip_needs_cloud", "ZIP backup се увози у cloud режиму; у локалном режиму користите JSON.");
+      const { api } = await import("./repo/cloud");
+      const res = await api<{ imported: { treeId: string } }>("/api/backups/import", { method: "POST", body: file, headers: { "content-type": "application/zip" } });
+      return res.imported.treeId;
+    }
+    throw new RepoError("gedcom_not_found", `Овај фајл не садржи GEDCOM (унутра: ${names.slice(0, 8).join(", ")}). У Family Tree Maker-у изаберите Датотека > Извези > GEDCOM (.ged) и увезите тај фајл.`);
   }
-  const parsed = parseBackup(await file.text());
+  const text = decodeGedcom(buf);
+  if (/^\s*0\s+HEAD\b/i.test(text.replace(/^\uFEFF/, "")) || /^\s*0\s+@[^@]+@\s+INDI\b/im.test(text)) return importGedcomText(repo, text, file.name);
+  const parsed = parseBackup(text);
   if (!parsed.ok) throw new RepoError(parsed.problem.code === "not_json" ? "invalid_json" : "bad_backup_format");
   return repo.importJson(parsed.data);
 }

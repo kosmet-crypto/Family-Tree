@@ -155,7 +155,7 @@ try {
 
   // 10b. GEDCOM (Family Tree Maker export) becomes a separate new tree
   const ged = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Petar /Јовић/\n1 SEX M\n1 BIRT\n2 DATE 1 JAN 1940\n0 @I2@ INDI\n1 NAME Ana /Јовић/\n1 SEX F\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I2@\n0 TRLR\n";
-  await page.getByTestId("import-file").setInputFiles({ name: "porodica.ged", mimeType: "text/plain", buffer: Buffer.from(ged) });
+  await page.getByTestId("import-file").setInputFiles({ name: "porodica", mimeType: "text/plain", buffer: Buffer.from(ged) });
   await page.waitForURL(/\/tree\/?\?id=/);
   await page.locator('[data-testid="person-node"]').first().waitFor();
   await page.waitForTimeout(300);
