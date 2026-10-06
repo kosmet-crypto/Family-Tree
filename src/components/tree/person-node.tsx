@@ -7,12 +7,15 @@ import type { Person } from "@/lib/types/db";
 import { NODE_H, NODE_W } from "@/client/layout";
 import { cn } from "../ui/cn";
 
-export type PersonNodeData = { person: Person; avatarUrl?: string; isRoot: boolean; highlighted: boolean };
+export type PersonNodeData = { person: Person; avatarUrl?: string; isRoot: boolean; highlighted: boolean; gen: number };
 export type PersonFlowNode = Node<PersonNodeData, "person">;
 
 const GENDER_COLOR: Record<Person["gender"], string> = {
   male: "var(--male)", female: "var(--female)", other: "var(--other)", unknown: "var(--edge)",
 };
+
+/** Pastel fill and border of a generation (6 colours, cycled). */
+export const genColors = (gen: number) => { const i = ((gen % 6) + 6) % 6; return { fill: `var(--gen-${i})`, border: `var(--gen-${i}b, var(--gen-${i}))` }; };
 
 export const initials = (p: Person) =>
   ((p.first_name?.[0] ?? "") + (p.last_name?.[0] ?? "")).toUpperCase() || "?";
@@ -28,9 +31,9 @@ function PersonNodeView({ data, selected }: NodeProps<PersonFlowNode>) {
     <div
       data-testid="person-node"
       data-person-id={p.id}
-      style={{ width: NODE_W, height: NODE_H, borderLeftColor: GENDER_COLOR[p.gender] }}
+      style={{ width: NODE_W, height: NODE_H, background: genColors(data.gen).fill, borderColor: genColors(data.gen).border }}
       className={cn(
-        "flex items-center gap-2.5 rounded-2xl border border-border border-l-[5px] bg-surface px-2.5 shadow-sm transition",
+        "relative flex items-center gap-2.5 rounded-[28px] border-2 px-2.5 shadow-candy transition",
         (selected || data.highlighted) && "ring-4 ring-primary/40",
         !p.is_living && "opacity-90",
       )}
@@ -41,12 +44,12 @@ function PersonNodeView({ data, selected }: NodeProps<PersonFlowNode>) {
       <Handle id="r" type="source" position={Position.Right} className="!opacity-0" />
       {data.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={data.avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" draggable={false} />
+        <img src={data.avatarUrl} alt="" style={{ borderColor: GENDER_COLOR[p.gender] }} className="h-12 w-12 shrink-0 rounded-full border-[3px] object-cover" draggable={false} />
       ) : (
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-muted">{initials(p)}</span>
+        <span style={{ borderColor: GENDER_COLOR[p.gender] }} className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-[3px] bg-surface text-sm font-bold text-muted">{initials(p)}</span>
       )}
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="line-clamp-2 text-[14px] font-semibold">{personDisplayName(p)}</span>
+        <span className="line-clamp-2 text-[14px] font-bold">{personDisplayName(p)}</span>
         <span className="block truncate text-xs text-muted">{years || " "}{!p.is_living && years && !years.startsWith("†") ? " †" : ""}</span>
         {data.isRoot && <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">ја</span>}
       </span>

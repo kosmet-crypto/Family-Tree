@@ -158,3 +158,39 @@ export function lifespanLabel(
   if (d) return `† ${d}`;
   return b ? `${b} – ?` : "";
 }
+
+// Typed date entry. The text shape follows the precision: DD.MM.YYYY, MM.YYYY or YYYY.
+type InputShape = "day" | "month" | "year";
+const shapeOf = (precision: DatePrecision | null | undefined): InputShape =>
+  (precision ?? "exact") === "exact" ? "day" : precision === "month" ? "month" : "year";
+
+export const DATE_INPUT_PLACEHOLDER: Record<InputShape, string> = { day: "ДД.ММ.ГГГГ", month: "ММ.ГГГГ", year: "ГГГГ" };
+export const dateInputPlaceholder = (precision: DatePrecision | null | undefined) => DATE_INPUT_PLACEHOLDER[shapeOf(precision)];
+
+/** Keeps digits only and inserts the dots while typing: "0503" -> "05.03", "05031930" -> "05.03.1930". */
+export function maskDateInput(raw: string, precision: DatePrecision | null | undefined): string {
+  const shape = shapeOf(precision);
+  const digits = raw.replace(/\D/g, "").slice(0, shape === "day" ? 8 : shape === "month" ? 6 : 4);
+  const cut = shape === "day" ? [2, 4] : shape === "month" ? [2] : [];
+  let out = "";
+  digits.split("").forEach((c, i) => { out += (cut.includes(i) ? "." : "") + c; });
+  return out;
+}
+
+/** ISO date -> text for the input (parts the precision does not use are dropped). */
+export function isoToDateInput(iso: string, precision: DatePrecision | null | undefined): string {
+  const p = iso ? parseIsoDate(iso) : null;
+  if (!p) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const shape = shapeOf(precision);
+  return shape === "day" ? `${pad(p.d)}.${pad(p.m)}.${p.y}` : shape === "month" ? `${pad(p.m)}.${p.y}` : String(p.y).padStart(4, "0");
+}
+
+/** Complete, valid text -> ISO date ("" while incomplete or invalid). Month/year fill the rest with 01. */
+export function dateInputToIso(text: string, precision: DatePrecision | null | undefined): string {
+  const shape = shapeOf(precision);
+  const m = (shape === "day" ? /^(\d{2})\.(\d{2})\.(\d{4})$/ : shape === "month" ? /^()(\d{2})\.(\d{4})$/ : /^()()(\d{4})$/).exec(text);
+  if (!m) return "";
+  const iso = `${m[3]}-${m[2] || "01"}-${m[1] || "01"}`;
+  return parseIsoDate(iso) ? iso : "";
+}

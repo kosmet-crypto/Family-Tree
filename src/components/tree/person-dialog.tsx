@@ -8,6 +8,7 @@ import type { FamilyGraph } from "@/lib/graph/family-graph";
 import { personDisplayName, searchPersons } from "@/lib/search";
 import type { DatePrecision, EntryMode, Gender, ParentRelation, PartnershipKind, PartnershipStatus, Person } from "@/lib/types/db";
 import { issueMessage, type Issue } from "@/lib/validation/issues";
+import { DateInput } from "../ui/date-input";
 import { validatePerson, type PersonInput } from "@/lib/validation/person";
 import { validateParentChild, validatePartnership } from "@/lib/validation/relations";
 import { Button } from "../ui/button";
@@ -228,7 +229,7 @@ export function PersonDialog({
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Датум рођења" error={fieldIssue("birth_date") && issueMessage(fieldIssue("birth_date")!)}>
-                <Input type="date" value={f.birth_date} onChange={(e) => set("birth_date", e.target.value)} data-testid="birth-date" />
+                <DateInput value={f.birth_date} precision={f.birth_date_precision} onChange={(v) => set("birth_date", v)} testId="birth-date" />
               </Field>
               <Field label="Тачност">
                 <Select value={f.birth_date_precision} onChange={(e) => set("birth_date_precision", e.target.value as DatePrecision)}>
@@ -241,7 +242,7 @@ export function PersonDialog({
             {!f.is_living && (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Датум смрти" error={fieldIssue("death_date") && issueMessage(fieldIssue("death_date")!)}>
-                  <Input type="date" value={f.death_date} onChange={(e) => set("death_date", e.target.value)} />
+                  <DateInput value={f.death_date} precision={f.death_date_precision} onChange={(v) => set("death_date", v)} />
                 </Field>
                 <Field label="Тачност">
                   <Select value={f.death_date_precision} onChange={(e) => set("death_date_precision", e.target.value as DatePrecision)}>
@@ -289,8 +290,8 @@ export function PersonDialog({
               </Select>
             </Field>
             {complex && <>
-              <Field label="Почетак"><Input type="date" value={pStart} onChange={(e) => setPStart(e.target.value)} /></Field>
-              <Field label="Крај"><Input type="date" value={pEnd} onChange={(e) => setPEnd(e.target.value)} /></Field>
+              <Field label="Почетак"><DateInput value={pStart} onChange={setPStart} /></Field>
+              <Field label="Крај"><DateInput value={pEnd} onChange={setPEnd} /></Field>
             </>}
           </div>
         )}

@@ -120,3 +120,18 @@ describe("backup files", () => {
     expect(backupFileName("Породица Петровић", new Date("2026-09-29T00:00:00Z"))).toBe("porodicno-stablo-porodica-petrovic-2026-09-29.json");
   });
 });
+
+describe("typed date input", () => {
+  it("masks, parses and formats by precision", async () => {
+    const d = await import("./dates");
+    expect(d.maskDateInput("05031930", "exact")).toBe("05.03.1930");
+    expect(d.maskDateInput("0319", "month")).toBe("03.19");
+    expect(d.maskDateInput("19ab305", "year")).toBe("1930");
+    expect(d.dateInputToIso("05.03.1930", "exact")).toBe("1930-03-05");
+    expect(d.dateInputToIso("31.02.1930", "exact")).toBe("");
+    expect(d.dateInputToIso("03.1930", "month")).toBe("1930-03-01");
+    expect(d.dateInputToIso("1930", "about")).toBe("1930-01-01");
+    expect(d.isoToDateInput("1930-03-05", "month")).toBe("03.1930");
+    expect(d.isoToDateInput("1930-03-05", "exact")).toBe("05.03.1930");
+  });
+});
