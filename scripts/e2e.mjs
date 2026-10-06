@@ -22,6 +22,9 @@ const viewport = () => page.locator(".react-flow__viewport").getAttribute("style
 
 async function addViaPanel(personName, button, fill) {
   await page.locator(`[data-testid="person-node"]:has-text("${personName}")`).first().click();
+  await page.getByTestId("mini-card").waitFor();
+  check("mini card shows name", (await page.getByTestId("mini-name").textContent()).includes(personName));
+  await page.getByTestId("open-panel").click();
   await page.getByTestId("person-panel").waitFor();
   await page.getByTestId(button).click();
   await page.getByTestId("person-dialog").waitFor();
@@ -68,6 +71,7 @@ try {
 
   // 4. validation: Marko cannot become Milan's parent (cycle); too-young parent warning
   await page.locator('[data-testid="person-node"]:has-text("Милан")').first().click();
+  await page.getByTestId("open-panel").click();
   await page.getByTestId("add-parent").click();
   await page.getByTestId("person-dialog").locator('button:has-text("Постојећа")').click();
   await page.getByTestId("person-dialog").locator('li button:has-text("Марко")').click();
@@ -78,6 +82,7 @@ try {
 
   // 5. complex model shows extra fields
   await page.locator('[data-testid="person-node"]:has-text("Весна")').first().click();
+  await page.getByTestId("open-panel").click();
   await page.getByTestId("edit-person").click();
   const simpleHasBirthName = await page.getByTestId("birth-name").count();
   await page.locator('[data-testid="mode-toggle"] button:has-text("Сложен")').click();
@@ -92,6 +97,7 @@ try {
 
   // 6. kinship shown in the panel (root = Јован, the first person)
   await page.locator('[data-testid="person-node"]:has-text("Весна")').first().click();
+  await page.getByTestId("open-panel").click();
   const rel = await page.getByTestId("panel-relation").innerText();
   check("kinship label in panel", rel === "сестра", rel);
   await page.keyboard.press("Escape");
@@ -111,6 +117,7 @@ try {
 
   // 8. photo upload (compressed in the browser) becomes the avatar
   await page.locator('[data-testid="person-node"]:has-text("Марко")').first().click();
+  await page.getByTestId("open-panel").click();
   const png = await page.evaluate(async () => {
     const c = document.createElement("canvas"); c.width = 1200; c.height = 900;
     const g = c.getContext("2d"); g.fillStyle = "#2f6b4f"; g.fillRect(0, 0, 1200, 900); g.fillStyle = "#fc8"; g.beginPath(); g.arc(600, 450, 300, 0, 7); g.fill();
@@ -118,7 +125,7 @@ try {
     return Array.from(new Uint8Array(await b.arrayBuffer()));
   });
   await page.getByTestId("photo-input").setInputFiles({ name: "marko.png", mimeType: "image/png", buffer: Buffer.from(png) });
-  await page.locator('[data-testid="person-node"]:has-text("Марко") img').waitFor({ timeout: 10000 });
+  await page.locator('[data-testid="person-node"]:has-text("Марко") img').waitFor({ state: "attached", timeout: 10000 });
   check("photo becomes avatar", true);
   await page.keyboard.press("Escape");
 
