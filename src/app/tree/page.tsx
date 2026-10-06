@@ -13,6 +13,9 @@ import { errorText } from "@/client/repo";
 import { AppBar } from "@/components/app/app-bar";
 import { GenerationList } from "@/components/tree/generation-list";
 import { PersonDialog, type PersonDialogResult, type RelationTarget } from "@/components/tree/person-dialog";
+import { PersonMiniCard } from "@/components/tree/person-mini-card";
+import { kinship } from "@/lib/graph/kinship";
+import { kinshipLabel } from "@/lib/graph/kinship-labels";
 import { PersonPanel } from "@/components/tree/person-panel";
 import { SearchBox } from "@/components/tree/search-box";
 import { ShareSheet } from "@/components/tree/share-sheet";
@@ -69,6 +72,11 @@ function TreeScreen() {
   const rootId = data?.tree.root_person_id ?? null;
   const canEdit = data ? data.role !== "viewer" : false;
   const selected = selectedId && graph ? graph.person(selectedId) ?? null : null;
+  const miniRelation = useMemo(() => {
+    const root = rootId && graph ? graph.person(rootId) : undefined;
+    if (!graph || !root || !selected) return null;
+    return root.id === selected.id ? "ја" : kinshipLabel(kinship(graph, root.id, selected.id), selected.gender, root.gender);
+  }, [graph, rootId, selected]);
   const persons = useMemo(() => (data ? data.persons : []), [data]);
 
   const pick = useCallback((id: string) => {
@@ -174,11 +182,15 @@ function TreeScreen() {
         ) : view === "tree" ? (
           <>
             <TreeCanvas graph={graph} rootId={rootId} selectedId={selectedId} avatars={avatars}
-              onSelect={(id) => { setSelectedId(id); setPanelOpen(!!id); }}
+              onSelect={(id) => { setSelectedId(id); setPanelOpen(false); }}
               onReady={(api) => { canvas.current = api; }} />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-2 p-4 safe-bottom">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 safe-bottom">
+              {selected && (
+                <PersonMiniCard person={selected} avatarUrl={selected.avatar_media_id ? avatars[selected.avatar_media_id] : undefined}
+                  relation={miniRelation} gen={graph.generations(rootId).get(selected.id) ?? 0}
+                  onMore={() => setPanelOpen(true)} onClose={() => setSelectedId(null)} />
+              )}
               <Button variant="outline" className="pointer-events-auto shadow-md" onClick={() => canvas.current?.fit()} aria-label="Цело стабло"><Maximize2 size={18} /> Цело стабло</Button>
-              {selected && <Button className="pointer-events-auto shadow-md" onClick={() => setPanelOpen(true)} data-testid="open-panel">{personDisplayName(selected)}</Button>}
             </div>
           </>
         ) : (
