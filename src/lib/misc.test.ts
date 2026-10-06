@@ -135,3 +135,55 @@ describe("typed date input", () => {
     expect(d.isoToDateInput("1930-03-05", "exact")).toBe("05.03.1930");
   });
 });
+
+describe("gedcom import", () => {
+  const ged = `0 HEAD
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Jovan /Petrović/
+1 SEX M
+1 BIRT
+2 DATE 5 MAR 1930
+2 PLAC Niš
+1 DEAT Y
+0 @I2@ INDI
+1 NAME Jelena /Ilić/
+1 SEX F
+1 BIRT
+2 DATE ABT 1932
+0 @I3@ INDI
+1 NAME Marko /Petrović/
+1 SEX M
+1 BIRT
+2 DATE MAR 1960
+1 NOTE Prva linija
+2 CONT druga
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 MARR
+2 DATE 1955
+2 PLAC Niš
+0 TRLR`;
+  it("converts people, parents and marriage", async () => {
+    const { gedcomToBackup } = await import("./gedcom/import");
+    let n = 0;
+    const res = gedcomToBackup(ged, "Test", () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`)!;
+    expect(res.people).toBe(3);
+    const [jovan, jelena, marko] = res.backup.persons as unknown as Record<string, unknown>[];
+    expect(jovan).toMatchObject({ first_name: "Jovan", last_name: "Petrović", gender: "male", birth_date: "1930-03-05", birth_date_precision: "exact", birth_place: "Niš", is_living: false });
+    expect(jelena).toMatchObject({ birth_date: "1932-01-01", birth_date_precision: "about" });
+    expect(marko).toMatchObject({ birth_date_precision: "month", notes: "Prva linija\ndruga" });
+    expect(res.backup.parent_child).toHaveLength(2);
+    expect(res.backup.partnerships[0]).toMatchObject({ kind: "marriage", status: "active", start_date: "1955-01-01" });
+    expect(gedcomToBackup("0 HEAD\n0 TRLR", "x")).toBeNull();
+  });
+  it("parses date phrases", async () => {
+    const { parseGedcomDate } = await import("./gedcom/import");
+    expect(parseGedcomDate("BEF 1900")).toEqual({ date: "1900-01-01", precision: "before" });
+    expect(parseGedcomDate("BET 1900 AND 1910")).toEqual({ date: "1900-01-01", precision: "about" });
+    expect(parseGedcomDate("31 FEB 1900").date).toBeNull();
+    expect(parseGedcomDate("unknown").date).toBeNull();
+  });
+});
