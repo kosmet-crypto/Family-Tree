@@ -49,19 +49,19 @@ try {
   await page.getByTestId("add-first").click();
 
   // 2. first person
-  await fillPerson("Јован", "Петровић", "Мушко", "1960-05-05");
+  await fillPerson("Јован", "Петровић", "Мушко", "05.05.1960");
   await page.getByTestId("save-person").click();
   await page.locator('[data-testid="person-node"]').first().waitFor();
   check("first person on canvas", (await nodes()) === 1);
 
   // 3. relatives
-  await addViaPanel("Јован", "add-child", () => fillPerson("Марко", null, "Мушко", "1990-03-03"));
+  await addViaPanel("Јован", "add-child", () => fillPerson("Марко", null, "Мушко", "03.03.1990"));
   await addViaPanel("Јован", "add-partner", async () => {
-    await fillPerson("Јелена", "Петровић", "Женско", "1962-02-02");
+    await fillPerson("Јелена", "Петровић", "Женско", "02.02.1962");
     await page.getByTestId("partner-status").selectOption("divorced");
   });
-  await addViaPanel("Јован", "add-parent", () => fillPerson("Милан", "Петровић", "Мушко", "1930-01-01"));
-  await addViaPanel("Јован", "add-sibling", () => fillPerson("Весна", null, "Женско", "1963-01-01"));
+  await addViaPanel("Јован", "add-parent", () => fillPerson("Милан", "Петровић", "Мушко", "01.01.1930"));
+  await addViaPanel("Јован", "add-sibling", () => fillPerson("Весна", null, "Женско", "01.01.1963"));
   await page.waitForTimeout(300);
   check("5 people after adding relatives", (await nodes()) === 5, String(await nodes()));
   check("inherited last name for child", (await page.locator('[data-testid="person-node"]:has-text("Марко Петровић")').count()) === 1);

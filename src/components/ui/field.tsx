@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cn } from "./cn";
 
-const base = "w-full rounded-xl border border-border bg-surface px-3 text-[15px] text-text placeholder:text-muted focus:border-primary focus:outline-none";
+const base = "w-full rounded-2xl border-2 border-border bg-surface px-4 text-[15px] text-text placeholder:text-muted focus:border-primary focus:outline-none";
 
 export function Input({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(base, "h-11", className)} {...p} />;
@@ -45,7 +45,7 @@ export function Switch({ checked, onChange, label, testId }: { checked: boolean;
 
 export function Segmented<T extends string>({ value, options, onChange, testId }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; testId?: string }) {
   return (
-    <div className="inline-flex rounded-xl bg-surface-2 p-1" role="tablist" data-testid={testId}>
+    <div className="inline-flex rounded-full bg-surface-2 p-1" role="tablist" data-testid={testId}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -53,7 +53,7 @@ export function Segmented<T extends string>({ value, options, onChange, testId }
           role="tab"
           aria-selected={value === o.value}
           onClick={() => onChange(o.value)}
-          className={cn("rounded-lg px-3 py-1.5 text-sm font-medium transition", value === o.value ? "bg-surface text-text shadow-sm" : "text-muted")}
+          className={cn("rounded-full px-3.5 py-1.5 text-sm font-semibold transition", value === o.value ? "bg-primary text-primary-fg shadow-candy" : "text-muted")}
         >
           {o.label}
         </button>

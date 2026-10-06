@@ -20,7 +20,7 @@ const nodeTypes = { person: PersonNode };
 
 function edgeStyleForParent(e: ParentChild) {
   const dashed = e.relation !== "biological";
-  return { stroke: "var(--edge)", strokeWidth: 2, strokeDasharray: dashed ? "6 5" : undefined };
+  return { stroke: "var(--edge)", strokeWidth: 3, strokeLinecap: "round" as const, strokeDasharray: dashed ? "6 5" : undefined };
 }
 
 function edgeStyleForPartner(p: Partnership) {
@@ -43,7 +43,7 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
       return {
         id, type: "person", position: pos, draggable: false,
         selected: id === selectedId,
-        data: { person, avatarUrl: person.avatar_media_id ? avatars[person.avatar_media_id] : undefined, isRoot: id === rootId, highlighted: id === selectedId },
+        data: { person, avatarUrl: person.avatar_media_id ? avatars[person.avatar_media_id] : undefined, isRoot: id === rootId, highlighted: id === selectedId, gen: layout.generation.get(id) ?? 0 },
       };
     }),
     [layout, graph, selectedId, avatars, rootId],
