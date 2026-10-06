@@ -2,7 +2,26 @@
 import { backupFileName, parseBackup } from "@/lib/backup/schema";
 import { RepoError, type Repo } from "./repo";
 
+/** Family Tree Maker (.ged export, or a zip that contains one) -> new tree. */
+export async function importGedcomFile(repo: Repo, file: File): Promise<string> {
+  const { decodeGedcom, gedcomToBackup } = await import("@/lib/gedcom/import");
+  let buf = await file.arrayBuffer();
+  const head = new Uint8Array(buf, 0, 2);
+  if (head[0] === 0x50 && head[1] === 0x4b) { // "PK": .fbk / .ftmb / .zip
+    const { unzipSync } = await import("fflate");
+    const files = unzipSync(new Uint8Array(buf), { filter: (f) => /\.ged$/i.test(f.name) });
+    const ged = Object.values(files)[0];
+    if (!ged) throw new RepoError("gedcom_not_found", "У овом фајлу нема GEDCOM-а. У Family Tree Maker-у изаберите Датотека > Извези > GEDCOM (.ged) и увезите тај фајл.");
+    buf = ged.buffer.slice(ged.byteOffset, ged.byteOffset + ged.byteLength) as ArrayBuffer;
+  }
+  const name = file.name.replace(/\.[^.]+$/, "") || "Увезено стабло";
+  const res = gedcomToBackup(decodeGedcom(buf), name);
+  if (!res) throw new RepoError("gedcom_empty", "У фајлу нема ниједне особе.");
+  return repo.importJson(res.backup, name);
+}
+
 export async function importBackupFile(repo: Repo, file: File): Promise<string> {
+  if (/\.(ged|fbk|ftmb)$/i.test(file.name)) return importGedcomFile(repo, file);
   const isZip = file.name.endsWith(".zip") || file.type.includes("zip");
   if (isZip) {
     if (repo.mode !== "cloud") throw new RepoError("zip_needs_cloud", "ZIP backup се увози у cloud режиму; у локалном режиму користите JSON.");

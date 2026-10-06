@@ -62,7 +62,7 @@ export default function Home() {
         <div className="mb-4 flex gap-2">
           <Button onClick={() => setCreating(true)} data-testid="new-tree"><Plus size={18} /> Ново стабло</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={18} /> Увези backup</Button>
-          <input ref={fileRef} type="file" accept=".json,.zip,application/json,application/zip" hidden data-testid="import-file" onChange={(e) => void onImport(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept=".json,.zip,.ged,.fbk,.ftmb,application/json,application/zip" hidden data-testid="import-file" onChange={(e) => void onImport(e.target.files?.[0])} />
         </div>
 
         {trees === null ? (

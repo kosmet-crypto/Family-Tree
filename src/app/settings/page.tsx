@@ -89,8 +89,8 @@ export default function SettingsPage() {
             </div>
           )}
           <div className="mt-3 border-t border-border pt-3">
-            <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={18} /> Увези backup као ново стабло</Button>
-            <input ref={fileRef} type="file" accept=".json,.zip" hidden data-testid="settings-import"
+            <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={18} /> Увези backup или Family Tree Maker као ново стабло</Button>
+            <input ref={fileRef} type="file" accept=".json,.zip,.ged,.fbk,.ftmb" hidden data-testid="settings-import"
               onChange={(e) => { const f = e.target.files?.[0]; if (f && repo) void importBackupFile(repo, f).then((id) => router.push(`/tree?id=${id}`)).catch((er) => toast(errorText(er), "error")); e.target.value = ""; }} />
             <p className="mt-2 text-xs text-muted">
               {repo?.mode === "cloud"
