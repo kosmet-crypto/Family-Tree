@@ -10,6 +10,12 @@ export interface UpdateInfo { version: string; url: string }
 
 const build = (v: string) => Number(/^v?\d+\.\d+\.(\d+)/.exec(v)?.[1] ?? NaN);
 
+/** Version of the installed APK ("" in a browser); the web part has its own number. */
+export async function apkVersionName(): Promise<string> {
+  if (!isNativeApp()) return "";
+  try { return (await (await import("@capacitor/app")).App.getInfo()).version; } catch { return ""; }
+}
+
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   if (!isNativeApp()) return null;
   try {

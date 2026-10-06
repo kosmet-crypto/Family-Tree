@@ -10,6 +10,7 @@ import { useRepo } from "@/client/hooks/use-repo";
 import { errorText, type TreeSummary } from "@/client/repo";
 import { purchasePremium, restorePurchases, billingAvailable } from "@/client/billing";
 import { AppBar } from "@/components/app/app-bar";
+import { apkVersionName } from "@/client/update";
 import { UpdateNotice } from "@/components/app/update-notice";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ export default function SettingsPage() {
   const toast = useToast();
   const [mode, setMode] = useState<EntryMode>("simple");
   const [trees, setTrees] = useState<TreeSummary[]>([]);
+  const [apkVersion, setApkVersion] = useState("");
+  useEffect(() => { void apkVersionName().then(setApkVersion); }, []);
   const [treeId, setTreeId] = useState("");
   const [billing, setBilling] = useState<Billing | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -125,7 +128,7 @@ export default function SettingsPage() {
           <h2 className="mb-2 flex items-center gap-2 font-semibold"><Heart size={18} className="text-primary" />О апликацији</h2>
           <p className="text-[15px] font-medium">Roots &amp; Branches — Породично стабло</p>
           <div className="mt-2"><UpdateNotice /></div>
-          <p className="text-sm text-muted">Верзија {clientConfig.appVersion} · {repo?.mode === "cloud" ? "облак" : "локални режим"}</p>
+          <p className="text-sm text-muted">{apkVersion ? `Апликација ${apkVersion} · веб ` : "Верзија "}{clientConfig.appVersion} · {repo?.mode === "cloud" ? "облак" : "локални режим"}</p>
           <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2 text-[15px]" data-testid="credit">{credit}</p>
         </section>
       </main>
