@@ -9,9 +9,13 @@ export async function importGedcomFile(repo: Repo, file: File): Promise<string> 
   const head = new Uint8Array(buf, 0, 2);
   if (head[0] === 0x50 && head[1] === 0x4b) { // "PK": .fbk / .ftmb / .zip
     const { unzipSync } = await import("fflate");
-    const files = unzipSync(new Uint8Array(buf), { filter: (f) => /\.ged$/i.test(f.name) });
+    const names: string[] = [];
+    const files = unzipSync(new Uint8Array(buf), { filter: (f) => { names.push(f.name); return /\.ged$/i.test(f.name); } });
     const ged = Object.values(files)[0];
-    if (!ged) throw new RepoError("gedcom_not_found", "У овом фајлу нема GEDCOM-а. У Family Tree Maker-у изаберите Датотека > Извези > GEDCOM (.ged) и увезите тај фајл.");
+    if (!ged) {
+      const inside = names.slice(0, 8).join(", ");
+      throw new RepoError("gedcom_not_found", `Овај backup не садржи GEDCOM (унутра: ${inside}). У Family Tree Maker-у изаберите Датотека > Извези > GEDCOM (.ged) и увезите тај фајл.`);
+    }
     buf = ged.buffer.slice(ged.byteOffset, ged.byteOffset + ged.byteLength) as ArrayBuffer;
   }
   const name = file.name.replace(/\.[^.]+$/, "") || "Увезено стабло";

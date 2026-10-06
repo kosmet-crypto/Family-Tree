@@ -7,6 +7,7 @@ import { useAuth } from "@/client/hooks/use-auth";
 import { useRepo } from "@/client/hooks/use-repo";
 import { errorText, type TreeSummary } from "@/client/repo";
 import { importBackupFile } from "@/client/backup";
+import { UpdateNotice } from "@/components/app/update-notice";
 import { AppBar } from "@/components/app/app-bar";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export default function Home() {
     <div className="min-h-dvh pb-24">
       <AppBar title={<span className="flex items-center gap-2"><TreeDeciduous className="text-primary" size={22} /> Roots &amp; Branches</span>} />
       <main className="mx-auto max-w-2xl px-4 py-4">
+        <UpdateNotice />
         {repo?.mode === "local" && (
           <p className="mb-4 rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted" data-testid="local-mode">
             Локални режим: подаци се чувају само на овом уређају. Правите backup у Подешавањима.
@@ -62,7 +64,7 @@ export default function Home() {
         <div className="mb-4 flex gap-2">
           <Button onClick={() => setCreating(true)} data-testid="new-tree"><Plus size={18} /> Ново стабло</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={18} /> Увези backup</Button>
-          <input ref={fileRef} type="file" accept=".json,.zip,.ged,.fbk,.ftmb,application/json,application/zip" hidden data-testid="import-file" onChange={(e) => void onImport(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" hidden data-testid="import-file" onChange={(e) => void onImport(e.target.files?.[0])} />
         </div>
 
         {trees === null ? (
