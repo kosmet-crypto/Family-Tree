@@ -32,3 +32,29 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
     return null;
   }
 }
+
+export type UpdateStatus = "new" | "current" | "web" | "error";
+
+/** Explicit check from the Data screen. In a browser there is no APK; the web part is refreshed instead. */
+export async function checkNow(): Promise<{ status: UpdateStatus; info?: UpdateInfo }> {
+  if (!isNativeApp()) return { status: "web" };
+  const info = await checkForUpdate();
+  if (info) return { status: "new", info };
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+    return { status: res.ok ? "current" : "error" };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+/** Drops the offline copies and reloads, so the newest web version is fetched (no reinstall needed). */
+export async function refreshWebApp(): Promise<void> {
+  try {
+    const regs = await navigator.serviceWorker?.getRegistrations();
+    await Promise.all((regs ?? []).map((r) => r.unregister()));
+    const keys = await caches?.keys();
+    await Promise.all((keys ?? []).filter((k) => k.startsWith("rb-")).map((k) => caches.delete(k)));
+  } catch { /* nothing cached */ }
+  location.reload();
+}

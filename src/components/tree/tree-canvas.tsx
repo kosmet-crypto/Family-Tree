@@ -2,14 +2,14 @@
 // Interactive tree: pan & pinch-zoom like a map, "fly to" a person from the search box.
 
 import {
-  Background, Controls, MarkerType, ReactFlow, ReactFlowProvider, useReactFlow,
+  Background, Controls, MarkerType, Panel, ReactFlow, ReactFlowProvider, useReactFlow,
   type Edge, type NodeMouseHandler,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { FamilyGraph } from "@/lib/graph/family-graph";
 import type { ParentChild, Partnership } from "@/lib/types/db";
 import { layoutTree, NODE_H, NODE_W } from "@/client/layout";
-import { PersonNode, type PersonFlowNode } from "./person-node";
+import { PersonNode, SIDE_TINT, type PersonFlowNode } from "./person-node";
 
 export interface CanvasApi {
   flyTo(personId: string): void;
@@ -43,7 +43,7 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
       return {
         id, type: "person", position: pos, draggable: false,
         selected: id === selectedId,
-        data: { person, avatarUrl: person.avatar_media_id ? avatars[person.avatar_media_id] : undefined, isRoot: id === rootId, highlighted: id === selectedId, gen: layout.generation.get(id) ?? 0 },
+        data: { person, avatarUrl: person.avatar_media_id ? avatars[person.avatar_media_id] : undefined, isRoot: id === rootId, highlighted: id === selectedId, gen: layout.generation.get(id) ?? 0, side: layout.side.get(id) ?? 0 },
       };
     }),
     [layout, graph, selectedId, avatars, rootId],
@@ -100,6 +100,12 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
       proOptions={{ hideAttribution: true }}
     >
       <Background gap={28} size={1.2} color="var(--border)" />
+      {layout.side.size > 0 && (
+        <Panel position="top-left" className="!m-2 flex gap-1.5 text-[11px] font-bold">
+          <span className="rounded-full px-2.5 py-1 shadow-candy" style={{ background: SIDE_TINT["-1"] + "55" }}>Очева страна</span>
+          <span className="rounded-full px-2.5 py-1 shadow-candy" style={{ background: SIDE_TINT["1"] + "55" }}>Мајчина страна</span>
+        </Panel>
+      )}
       <Controls showInteractive={false} position="bottom-right" className="!mb-24 sm:!mb-6" />
     </ReactFlow>
   );

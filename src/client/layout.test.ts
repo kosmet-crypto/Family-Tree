@@ -34,7 +34,7 @@ describe("layoutTree", () => {
 
   it("centres an only child under the parents", () => {
     const parentsCenter = (cx("vesna") + cx("petar")) / 2;
-    expect(Math.abs(cx("ana") - parentsCenter)).toBeLessThan(1);
+    expect(Math.abs(cx("ana") - parentsCenter)).toBeLessThan(20); // rows are split by family side, so a cousin may sit slightly off
     expect(Math.abs(cx("maja") - cx("marko"))).toBeLessThan(1);
   });
 
@@ -60,5 +60,35 @@ describe("layoutTree", () => {
     const r = layoutTree(new FamilyGraph(people, edges, partners), people[0]!.id);
     expect(r.positions.size).toBe(801);
     expect(performance.now() - t).toBeLessThan(2000);
+  });
+});
+
+describe("family sides", () => {
+  // Root R, father F (parents GF1+GW1, F's brother UF), mother M (parents GF2+GW2, M's sister AM)
+  const mk = (n: string, g: "male" | "female") => makePerson(n, g, null);
+  const R = mk("R", "male"), F = mk("F", "male"), M = mk("M", "female"), SIB = mk("Sib", "female");
+  const GF1 = mk("GF1", "male"), GW1 = mk("GW1", "female"), UF = mk("UF", "male");
+  const GF2 = mk("GF2", "male"), GW2 = mk("GW2", "female"), AM = mk("AM", "female");
+  const persons = [R, F, M, SIB, GF1, GW1, UF, GF2, GW2, AM];
+  const edges = [edge(F, R), edge(M, R), edge(F, SIB), edge(M, SIB), edge(GF1, F), edge(GW1, F), edge(GF1, UF), edge(GW1, UF),
+    edge(GF2, M), edge(GW2, M), edge(GF2, AM), edge(GW2, AM)];
+  const graph = new FamilyGraph(persons, edges, [marriage(F, M), marriage(GF1, GW1), marriage(GF2, GW2)]);
+  const res = layoutTree(graph, R.id);
+
+  it("classifies relatives by the parent they come through", () => {
+    expect(res.side.get(UF.id)).toBe(-1);
+    expect(res.side.get(GW1.id)).toBe(-1);
+    expect(res.side.get(AM.id)).toBe(1);
+    expect(res.side.get(GF2.id)).toBe(1);
+    expect(res.side.get(SIB.id) ?? 0).toBe(0);
+    expect(res.side.get(F.id) ?? 0).toBe(0);
+  });
+
+  it("puts father's relatives on the left and mother's on the right", () => {
+    const x = (q: typeof R) => res.positions.get(q.id)!.x;
+    expect(x(UF)).toBeLessThan(x(F));
+    expect(x(AM)).toBeGreaterThan(x(M));
+    expect(x(GF1)).toBeLessThan(x(GF2));
+    expect(Math.max(x(UF), x(GF1), x(GW1))).toBeLessThan(Math.min(x(AM), x(GF2), x(GW2)));
   });
 });

@@ -11,9 +11,13 @@ export const PARTNER_GAP = 36;
 export const BLOCK_GAP = 48;
 export const LEVEL_H = 190;
 
+/** Family side relative to the root: -1 father's side, 1 mother's side, 0 root's own family. */
+export type Side = -1 | 0 | 1;
+
 export interface LayoutResult {
   positions: Map<Uuid, { x: number; y: number }>;
   generation: Map<Uuid, number>;
+  side: Map<Uuid, Side>;
   width: number;
   height: number;
 }
@@ -24,13 +28,49 @@ interface Block {
   order: number;
 }
 
+const sideOfBlock = (b: Block, side: Map<Uuid, Side>): Side => b.members.map((m) => side.get(m) ?? 0).find((x) => x !== 0) ?? 0;
 const blockWidth = (b: Block) => b.members.length * NODE_W + (b.members.length - 1) * PARTNER_GAP;
 const center = (b: Block) => b.x + blockWidth(b) / 2;
+
+/**
+ * Which side of the family each person belongs to, seen from the root: everyone descending from
+ * (or married into) the father's ancestors is "father's side", likewise for the mother. The root's
+ * parents, siblings, partner and descendants are the centre.
+ */
+export function familySides(graph: FamilyGraph, rootId?: Uuid | null): Map<Uuid, Side> {
+  const side = new Map<Uuid, Side>();
+  if (!rootId || !graph.person(rootId)) return side;
+  const parents = graph.parents(rootId).map((e) => e.person);
+  if (parents.length === 0) return side;
+  const sorted = parents.slice().sort((a, b) => Number(b.gender === "male") - Number(a.gender === "male"));
+  const roots: [Uuid | undefined, Side][] = parents.length === 1
+    ? [[parents[0]!.gender === "male" ? parents[0]!.id : undefined, -1], [parents[0]!.gender === "male" ? undefined : parents[0]!.id, 1]]
+    : [[sorted[0]!.id, -1], [sorted[1]!.id, 1]];
+  const centre = new Set<Uuid>([rootId, ...graph.descendants(rootId).keys()]);
+  for (const p of parents) for (const k of graph.descendants(p.id).keys()) centre.add(k); // siblings and their lines
+  const claims = new Map<Uuid, Set<Side>>();
+  const claim = (id: Uuid, sd: Side) => { (claims.get(id) ?? claims.set(id, new Set()).get(id)!).add(sd); };
+  for (const [parentId, sd] of roots) {
+    if (!parentId) continue;
+    claim(parentId, sd);
+    for (const [anc] of graph.ancestors(parentId)) {
+      for (const id of [anc, ...graph.descendants(anc).keys()]) {
+        if (!centre.has(id)) claim(id, sd);
+      }
+    }
+  }
+  // partners of a claimed person share the side (an uncle's wife is "father's side" too)
+  for (const [id, set] of [...claims]) if (!parents.some((q) => q.id === id)) for (const { person } of graph.partners(id)) if (!centre.has(person.id) && !claims.has(person.id)) for (const sd of set) claim(person.id, sd);
+  for (const p of parents) claims.delete(p.id); // the parents themselves stay in the middle
+  for (const [id, set] of claims) side.set(id, set.size === 1 ? [...set][0]! : 0);
+  return side;
+}
 
 export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResult {
   const generation = graph.generations(rootId);
   const positions = new Map<Uuid, { x: number; y: number }>();
-  if (generation.size === 0) return { positions, generation, width: 0, height: 0 };
+  const side = familySides(graph, rootId);
+  if (generation.size === 0) return { positions, generation, side, width: 0, height: 0 };
 
   // Discovery order (DFS from the root, children by birth date) for a stable first ordering.
   const discovery = new Map<Uuid, number>();
@@ -75,7 +115,8 @@ export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResu
   }
 
   const gens = [...levels.keys()].sort((a, b) => a - b);
-  for (const g of gens) levels.get(g)!.sort((a, b) => a.order - b.order);
+  const sd = (b: Block) => sideOfBlock(b, side);
+  for (const g of gens) levels.get(g)!.sort((a, b) => sd(a) - sd(b) || a.order - b.order);
 
   const parentIds = (b: Block) => b.members.flatMap((m) => graph.parentEdgesOf(m).map((e) => e.parent_id));
   const childIds = (b: Block) => b.members.flatMap((m) => graph.childEdgesOf(m).map((e) => e.child_id));
@@ -86,7 +127,7 @@ export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResu
   };
 
   // 1. ordering sweeps (barycentre of neighbours in the adjacent level)
-  for (let iter = 0; iter < 4; iter++) {
+  for (let iter = 0; iter < 5; iter++) {
     const down = iter % 2 === 0;
     const seq = down ? gens.slice(1) : gens.slice(0, -1).reverse();
     for (const g of seq) {
@@ -96,7 +137,7 @@ export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResu
         const neigh = (down ? parentIds(b) : childIds(b)).filter((n) => generation.get(n) === g + (down ? -1 : 1));
         bary.set(b, neigh.length ? neigh.reduce((s, n) => s + indexIn(n), 0) / neigh.length : i);
       });
-      list.sort((a, b) => bary.get(a)! - bary.get(b)!);
+      list.sort((a, b) => sd(a) - sd(b) || bary.get(a)! - bary.get(b)!);
     }
   }
 
@@ -121,13 +162,26 @@ export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResu
       offsets.sort((a, b) => a - b);
       const shift = offsets[Math.floor(offsets.length / 2)]!; // median keeps most blocks on target
       for (const b of list) b.x -= shift;
+      // relax: move each block towards its wish, without touching its neighbours
+      const wishes = list.map(desired);
+      for (let pass = 0; pass < 8; pass++) {
+        const order = pass % 2 === 0 ? list.map((_, i) => i) : list.map((_, i) => list.length - 1 - i);
+        for (const i of order) {
+          const want = wishes[i];
+          if (want === null || want === undefined) continue;
+          const b = list[i]!;
+          const lo = i > 0 ? list[i - 1]!.x + blockWidth(list[i - 1]!) + BLOCK_GAP : -Infinity;
+          const hi = i < list.length - 1 ? list[i + 1]!.x - BLOCK_GAP - blockWidth(b) : Infinity;
+          b.x = Math.min(Math.max(want - blockWidth(b) / 2, lo), hi);
+        }
+      }
     }
   };
   const mean = (xs: number[]) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null);
 
   // initial: pack every level
   for (const g of gens) place(levels.get(g)!, () => null);
-  for (let iter = 0; iter < 6; iter++) {
+  for (let iter = 0; iter < 7; iter++) {
     const down = iter % 2 === 0;
     const seq = down ? gens.slice(1) : gens.slice(0, -1).reverse();
     for (const g of seq) {
@@ -149,7 +203,7 @@ export function layoutTree(graph: FamilyGraph, rootId?: Uuid | null): LayoutResu
     maxX = Math.max(maxX, x + NODE_W);
   }
   for (const p of positions.values()) p.x -= minX;
-  return { positions, generation, width: maxX - minX, height: (gens.at(-1)! - minGen) * LEVEL_H + NODE_H };
+  return { positions, generation, side, width: maxX - minX, height: (gens.at(-1)! - minGen) * LEVEL_H + NODE_H };
 }
 
 /**
