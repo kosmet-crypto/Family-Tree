@@ -1,11 +1,12 @@
 "use client";
-import { Settings, TreeDeciduous } from "lucide-react";
+import { DatabaseBackup, Settings, TreeDeciduous } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "../ui/cn";
 
 const items = [
   { href: "/", label: "Стабла", icon: TreeDeciduous },
+  { href: "/data", label: "Подаци", icon: DatabaseBackup },
   { href: "/settings", label: "Подешавања", icon: Settings },
 ];
 

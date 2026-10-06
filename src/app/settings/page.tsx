@@ -1,20 +1,20 @@
 "use client";
-import { Crown, Download, FileArchive, Heart, Info, LogOut, Upload } from "lucide-react";
+import { Crown, FileArchive, Heart, Info, LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { EntryMode, PhotoQuotaRow } from "@/lib/types/db";
-import { downloadJsonBackup, downloadZipBackup, importBackupFile } from "@/client/backup";
 import { clientConfig, credit } from "@/client/config";
 import { useAuth } from "@/client/hooks/use-auth";
 import { useRepo } from "@/client/hooks/use-repo";
-import { errorText, type TreeSummary } from "@/client/repo";
+import { errorText } from "@/client/repo";
 import { purchasePremium, restorePurchases, billingAvailable } from "@/client/billing";
 import { AppBar } from "@/components/app/app-bar";
 import { apkVersionName } from "@/client/update";
 import { UpdateNotice } from "@/components/app/update-notice";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { Button } from "@/components/ui/button";
-import { Segmented, Select } from "@/components/ui/field";
+import { Segmented } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 
 type Billing = { plan: "free" | "premium"; planExpiresAt: string | null; premium: boolean; photos: PhotoQuotaRow };
@@ -34,24 +34,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const toast = useToast();
   const [mode, setMode] = useState<EntryMode>("simple");
-  const [trees, setTrees] = useState<TreeSummary[]>([]);
   const [apkVersion, setApkVersion] = useState("");
   useEffect(() => { void apkVersionName().then(setApkVersion); }, []);
-  const [treeId, setTreeId] = useState("");
   const [billing, setBilling] = useState<Billing | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!repo || !auth.ready) return;
     void repo.getEntryMode().then(setMode).catch(() => {});
-    void repo.listTrees().then((t) => { setTrees(t); setTreeId((cur) => cur || t[0]?.id || ""); }).catch(() => {});
     if (repo.mode === "cloud") {
       void import("@/client/repo/cloud").then(({ api }) => api<Billing>("/api/billing")).then(setBilling).catch(() => {});
     }
   }, [repo, auth.ready]);
 
   const changeMode = (m: EntryMode) => { setMode(m); void repo?.setEntryMode(m).then(() => toast("Сачувано.")).catch((e) => toast(errorText(e), "error")); };
-  const tree = trees.find((t) => t.id === treeId);
 
   const buy = async () => {
     try {
@@ -76,32 +71,9 @@ export default function SettingsPage() {
           </p>
         </Section>
 
-        <Section title="Backup и враћање" icon={<FileArchive size={18} className="text-primary" />}>
-          {trees.length === 0 ? <p className="text-sm text-muted">Још нема стабала.</p> : (
-            <div className="flex flex-col gap-3">
-              <Select value={treeId} onChange={(e) => setTreeId(e.target.value)} aria-label="Стабло">
-                {trees.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </Select>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" data-testid="export-json" onClick={() => repo && void downloadJsonBackup(repo, treeId).then(() => toast("Backup је сачуван.")).catch((e) => toast(errorText(e), "error"))}>
-                  <Download size={18} /> JSON{repo?.mode === "local" ? " (са сликама)" : ""}
-                </Button>
-                {repo?.mode === "cloud" && tree && (
-                  <Button variant="outline" onClick={() => void downloadZipBackup(treeId, tree.name).catch((e) => toast(errorText(e), "error"))}><FileArchive size={18} /> ZIP са сликама</Button>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="mt-3 border-t border-border pt-3">
-            <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload size={18} /> Увези backup или Family Tree Maker као ново стабло</Button>
-            <input ref={fileRef} type="file" hidden data-testid="settings-import"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f && repo) void importBackupFile(repo, f).then((id) => router.push(`/tree?id=${id}`)).catch((er) => toast(errorText(er), "error")); e.target.value = ""; }} />
-            <p className="mt-2 text-xs text-muted">
-              {repo?.mode === "cloud"
-                ? "Аутоматски backup: једном дневно се у облаку чува снимак сваког стабла које сте мењали."
-                : "Локални режим: подаци су само на овом уређају. Повремено сачувајте JSON backup."}
-            </p>
-          </div>
+        <Section title="Подаци" icon={<FileArchive size={18} className="text-primary" />}>
+          <p className="mb-3 text-sm text-muted">Backup, враћање, увоз из Family Tree Maker-а и ажурирање апликације.</p>
+          <Link href="/data" className="inline-flex"><Button variant="outline"><FileArchive size={18} /> Отвори „Подаци и ажурирање“</Button></Link>
         </Section>
 
         <Section title="Пакет" icon={<Crown size={18} className="text-primary" />}>

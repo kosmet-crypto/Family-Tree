@@ -140,11 +140,14 @@ try {
   await page.goto(`${BASE}/settings/`);
   const credit = await page.getByTestId("credit").innerText();
   check("developer credit", credit === "Developed by: Ivan S. - Epicurus001, Oslo", credit);
+  await page.goto(`${BASE}/data/`);
+  await page.getByTestId("export-json").waitFor();
+  check("data screen has update check", (await page.getByTestId("check-update").count()) === 1);
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-json").click()]);
   const path = await download.path();
   const backup = JSON.parse(await (await import("node:fs/promises")).readFile(path, "utf8"));
   check("JSON backup has 5 people and the photo", backup.persons.length === 5 && backup.media.length === 1 && backup.media[0].data_url?.startsWith("data:image/"), `${backup.persons.length}/${backup.media.length}`);
-  await page.getByTestId("settings-import").setInputFiles(path);
+  await page.getByTestId("settings-import-input").setInputFiles(path);
   await page.waitForURL(/\/tree\/?\?id=/);
   await page.locator('[data-testid="person-node"]').first().waitFor();
   await page.waitForTimeout(500);
@@ -152,6 +155,20 @@ try {
   await page.goto(`${BASE}/`);
   await page.getByTestId("tree-list").waitFor();
   check("two trees listed", (await page.getByTestId("tree-list").locator("li").count()) === 2);
+
+  // 10a. tree export: PDF and PNG are real files
+  await page.getByTestId("tree-list").locator("li a").first().click().catch(() => {});
+  await page.waitForURL(/\/tree\/?\?id=/);
+  await page.locator('[data-testid="person-node"]').first().waitFor();
+  await page.getByTestId("open-export").click();
+  const [pdfDl] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-pdf").click()]);
+  const pdfHead = (await (await import("node:fs/promises")).readFile(await pdfDl.path())).subarray(0, 5).toString();
+  check("PDF export is a PDF", pdfHead === "%PDF-" && pdfDl.suggestedFilename().endsWith(".pdf"), pdfHead);
+  const [pngDl] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-png").click()]);
+  const pngHead = (await (await import("node:fs/promises")).readFile(await pngDl.path())).subarray(1, 4).toString();
+  check("PNG export is a PNG", pngHead === "PNG", pngHead);
+  await page.goto(`${BASE}/`);
+  await page.getByTestId("tree-list").waitFor();
 
   // 10b. GEDCOM (Family Tree Maker export) becomes a separate new tree
   const ged = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Petar /Јовић/\n1 SEX M\n1 BIRT\n2 DATE 1 JAN 1940\n0 @I2@ INDI\n1 NAME Ana /Јовић/\n1 SEX F\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I2@\n0 TRLR\n";

@@ -187,3 +187,19 @@ describe("gedcom import", () => {
     expect(parseGedcomDate("unknown").date).toBeNull();
   });
 });
+
+describe("pdf writer", () => {
+  it("writes a valid single-page PDF with a correct xref", async () => {
+    const { pdfFromJpeg } = await import("./export/pdf");
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    const pdf = pdfFromJpeg(jpeg, 2000, 1000, "A3", "Test");
+    const text = new TextDecoder("latin1").decode(pdf);
+    expect(text.startsWith("%PDF-1.4")).toBe(true);
+    expect(text.trimEnd().endsWith("%%EOF")).toBe(true);
+    expect(text).toContain("/MediaBox [0 0 1190.55 841.89]"); // wide image -> landscape A3
+    const xrefAt = Number(/startxref\n(\d+)/.exec(text)![1]);
+    expect(text.slice(xrefAt, xrefAt + 4)).toBe("xref");
+    const offs = [...text.slice(xrefAt).matchAll(/(\d{10}) 00000 n/g)].map((m) => Number(m[1]));
+    offs.forEach((o, i) => expect(text.slice(o, o + 7)).toBe(`${i + 1} 0 obj`));
+  });
+});

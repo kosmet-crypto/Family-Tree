@@ -5,15 +5,16 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { compressImage } from "@/lib/media/compress";
 import { personDisplayName } from "@/lib/search";
 import type { EntryMode, Person } from "@/lib/types/db";
-import { downloadJsonBackup } from "@/client/backup";
 import { useAuth } from "@/client/hooks/use-auth";
 import { useRepo } from "@/client/hooks/use-repo";
 import { useTree } from "@/client/hooks/use-tree";
 import { errorText } from "@/client/repo";
 import { AppBar } from "@/components/app/app-bar";
+import { ExportSheet } from "@/components/tree/export-sheet";
 import { GenerationList } from "@/components/tree/generation-list";
 import { PersonDialog, type PersonDialogResult, type RelationTarget } from "@/components/tree/person-dialog";
 import { PersonMiniCard } from "@/components/tree/person-mini-card";
+import { familySides } from "@/client/layout";
 import { kinship } from "@/lib/graph/kinship";
 import { kinshipLabel } from "@/lib/graph/kinship-labels";
 import { PersonPanel } from "@/components/tree/person-panel";
@@ -40,6 +41,7 @@ function TreeScreen() {
   const [mode, setMode] = useState<EntryMode>("simple");
   const [busy, setBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const canvas = useRef<CanvasApi | null>(null);
   const pendingFly = useRef<string | null>(null);
@@ -155,7 +157,7 @@ function TreeScreen() {
     <div className="flex h-dvh flex-col">
       <AppBar title={data?.tree.name ?? "…"} back="/"
         actions={<>
-          {data && <Button variant="ghost" size="icon" aria-label="Преузми backup" onClick={() => void downloadJsonBackup(repo!, data.tree.id).catch((e) => toast(errorText(e), "error"))}><Download size={20} /></Button>}
+          {data && <Button variant="ghost" size="icon" aria-label="Извоз и backup" data-testid="open-export" onClick={() => setExportOpen(true)}><Download size={20} /></Button>}
           {repo?.mode === "cloud" && data && <Button variant="ghost" size="icon" aria-label="Подели" onClick={() => setShareOpen(true)} data-testid="share"><Share2 size={20} /></Button>}
         </>}>
         {data && data.persons.length > 0 && (
@@ -187,7 +189,7 @@ function TreeScreen() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 safe-bottom">
               {selected && (
                 <PersonMiniCard person={selected} avatarUrl={selected.avatar_media_id ? avatars[selected.avatar_media_id] : undefined}
-                  relation={miniRelation} gen={graph.generations(rootId).get(selected.id) ?? 0}
+                  relation={miniRelation} gen={graph.generations(rootId).get(selected.id) ?? 0} side={familySides(graph, rootId).get(selected.id) ?? 0}
                   onMore={() => setPanelOpen(true)} onClose={() => setSelectedId(null)} />
               )}
               <Button variant="outline" className="pointer-events-auto shadow-md" onClick={() => canvas.current?.fit()} aria-label="Цело стабло"><Maximize2 size={18} /> Цело стабло</Button>
@@ -217,6 +219,7 @@ function TreeScreen() {
             onUnlinkParent={(id) => { if (confirm("Уклонити ову везу?")) void repo.deleteParentChild(data.tree.id, id).then(reload).catch((e) => toast(errorText(e), "error")); }}
             onUnlinkPartner={(id) => { if (confirm("Уклонити ову везу?")) void repo.deletePartnership(data.tree.id, id).then(reload).catch((e) => toast(errorText(e), "error")); }}
           />
+          <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} repo={repo} graph={graph} treeId={data.tree.id} treeName={data.tree.name} rootId={rootId} />
           <PersonDialog open={dialog.open} onClose={() => setDialog({ open: false })} onSubmit={onSubmit}
             graph={graph} treeId={data.tree.id} editing={dialog.editing} target={dialog.target}
             mode={mode} onModeChange={changeMode} busy={busy} />

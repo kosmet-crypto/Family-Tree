@@ -3,15 +3,16 @@ import { ChevronRight, X } from "lucide-react";
 import { formatPartialDate } from "@/lib/dates";
 import { personDisplayName } from "@/lib/search";
 import type { Person } from "@/lib/types/db";
+import type { Side } from "@/client/layout";
 import { genColors, initials } from "./person-node";
 
 /** Small profile shown when a person is tapped in the tree: name, birth date and place. */
-export function PersonMiniCard({ person, avatarUrl, relation, gen, onMore, onClose }: {
-  person: Person; avatarUrl?: string; relation?: string | null; gen: number; onMore: () => void; onClose: () => void;
+export function PersonMiniCard({ person, avatarUrl, relation, gen, side, onMore, onClose }: {
+  person: Person; avatarUrl?: string; relation?: string | null; gen: number; side?: Side; onMore: () => void; onClose: () => void;
 }) {
   const birth = formatPartialDate({ date: person.birth_date, precision: person.birth_date_precision });
   const death = person.is_living ? "" : formatPartialDate({ date: person.death_date, precision: person.death_date_precision });
-  const c = genColors(gen);
+  const c = genColors(gen, side);
   return (
     <div data-testid="mini-card" style={{ background: c.fill, borderColor: c.border }}
       className="pointer-events-auto relative mx-auto flex w-full max-w-sm items-center gap-3 rounded-[28px] border-2 p-3 pr-4 shadow-candy">
