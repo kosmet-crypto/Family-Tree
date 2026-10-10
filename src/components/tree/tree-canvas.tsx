@@ -24,15 +24,16 @@ function FamilyEdge({ data }: EdgeProps) {
   return <BaseEdge path={linkPath(l)} style={{ stroke: `var(--gen-${l.tone}b)`, strokeWidth: 3.5, strokeLinecap: "round", strokeDasharray: l.dashed ? "7 6" : undefined, fill: "none" }} />;
 }
 const edgeTypes = { family: FamilyEdge };
+const PARTNER_LABEL: Record<Partnership["status"], string | undefined> = { active: undefined, divorced: "развод", separated: "раздвојени", widowed: "удовиштво", annulled: "поништен" };
 
 function edgeStyleForPartner(p: Partnership) {
   const ended = p.status === "divorced" || p.status === "separated" || p.status === "annulled";
   return { stroke: ended ? "var(--edge)" : "var(--accent)", strokeWidth: 3, strokeDasharray: ended ? "4 6" : undefined };
 }
 
-function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
+function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady, onEditPartnership }: {
   graph: FamilyGraph; rootId: string | null; selectedId: string | null; avatars: Record<string, string>;
-  onSelect: (id: string | null) => void; onReady: (api: CanvasApi) => void;
+  onSelect: (id: string | null) => void; onReady: (api: CanvasApi) => void; onEditPartnership?: (id: string) => void;
 }) {
   const rf = useReactFlow();
   const layout = useMemo(() => layoutTree(graph, rootId), [graph, rootId]);
@@ -64,7 +65,8 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
         const b = layout.positions.get(p.person2_id);
         if (!a || !b) continue;
         const [left, right] = a.x <= b.x ? [p.person1_id, p.person2_id] : [p.person2_id, p.person1_id];
-        out.push({ id: p.id, source: left, target: right, sourceHandle: "r", targetHandle: "l", type: a.y === b.y ? "straight" : "smoothstep", style: edgeStyleForPartner(p) });
+        out.push({ id: p.id, source: left, target: right, sourceHandle: "r", targetHandle: "l", type: a.y === b.y ? "straight" : "smoothstep", style: edgeStyleForPartner(p), interactionWidth: 36, className: "cursor-pointer",
+          label: PARTNER_LABEL[p.status], labelStyle: { fontSize: 10, fontWeight: 800, fill: "var(--muted)" }, labelBgPadding: [4, 2], labelBgBorderRadius: 8, labelBgStyle: { fill: "var(--surface)" } });
       }
     }
     for (const l of links) out.push({ id: l.id, source: l.parents[0]!, target: l.child, type: "family", data: { link: l }, selectable: false, focusable: false });
@@ -91,6 +93,7 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
       edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       onPaneClick={() => onSelect(null)}
+      onEdgeClick={(_, edge) => { if (edge.type !== "family") onEditPartnership?.(edge.id); }}
       nodesConnectable={false}
       nodesDraggable={false}
       elementsSelectable
