@@ -103,6 +103,7 @@ export function gedcomToBackup(text: string, treeName: string, newId: () => stri
   }
 
   const parent_child: Record<string, unknown>[] = [];
+  const seenEdges = new Set<string>();
   const partnerships: Record<string, unknown>[] = [];
   const fams = recs.filter((r) => r.tag === "FAM" && r.xref);
   for (const f of fams) {
@@ -112,6 +113,8 @@ export function gedcomToBackup(text: string, treeName: string, newId: () => stri
       if (!c) continue;
       for (const p of spouses) {
         if (p === c) continue;
+        if (seenEdges.has(`${p}|${c}`)) continue; // the same link listed in two FAM records
+        seenEdges.add(`${p}|${c}`);
         parent_child.push({ id: newId(), parent_id: p, child_id: c, relation: pedigree.get(`${k.value.trim()}|${f.xref}`) ?? "biological", start_date: null, notes: null });
       }
     }

@@ -179,6 +179,11 @@ describe("gedcom import", () => {
     expect(res.backup.partnerships[0]).toMatchObject({ kind: "marriage", status: "active", start_date: "1955-01-01" });
     expect(gedcomToBackup("0 HEAD\n0 TRLR", "x")).toBeNull();
   });
+  it("lists a parent-child link only once", async () => {
+    const { gedcomToBackup } = await import("./gedcom/import");
+    const dup = ged.replace("0 TRLR", "0 @F2@ FAM\n1 HUSB @I1@\n1 CHIL @I3@\n0 TRLR");
+    expect(gedcomToBackup(dup, "T")!.backup.parent_child).toHaveLength(2);
+  });
   it("parses date phrases", async () => {
     const { parseGedcomDate } = await import("./gedcom/import");
     expect(parseGedcomDate("BEF 1900")).toEqual({ date: "1900-01-01", precision: "before" });
