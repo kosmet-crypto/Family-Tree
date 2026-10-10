@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { compressImage } from "@/lib/media/compress";
 import { personDisplayName } from "@/lib/search";
-import type { EntryMode, Person } from "@/lib/types/db";
+import type { EntryMode, Partnership, Person } from "@/lib/types/db";
 import { useAuth } from "@/client/hooks/use-auth";
 import { useRepo } from "@/client/hooks/use-repo";
 import { useTree } from "@/client/hooks/use-tree";
@@ -14,6 +14,7 @@ import { TreeArt } from "@/components/app/tree-art";
 import { ExportSheet } from "@/components/tree/export-sheet";
 import { GenerationList } from "@/components/tree/generation-list";
 import { PersonDialog, type PersonDialogResult, type RelationTarget } from "@/components/tree/person-dialog";
+import { PartnershipDialog } from "@/components/tree/partnership-dialog";
 import { PersonMiniCard } from "@/components/tree/person-mini-card";
 import { familySides } from "@/client/layout";
 import { kinship } from "@/lib/graph/kinship";
@@ -43,6 +44,7 @@ function TreeScreen() {
   const [busy, setBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [editLink, setEditLink] = useState<Partnership | null>(null);
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const canvas = useRef<CanvasApi | null>(null);
   const pendingFly = useRef<string | null>(null);
@@ -187,6 +189,7 @@ function TreeScreen() {
           <>
             <TreeCanvas graph={graph} rootId={rootId} selectedId={selectedId} avatars={avatars}
               onSelect={(id) => { setSelectedId(id); setPanelOpen(false); }}
+              onEditPartnership={(id) => { if (canEdit) setEditLink(data?.partnerships.find((p) => p.id === id) ?? null); }}
               onReady={(api) => { canvas.current = api; }} />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 safe-bottom">
               {selected && (
@@ -219,8 +222,12 @@ function TreeScreen() {
             }}
             onPhoto={(p, f) => void onPhoto(p, f)}
             onUnlinkParent={(id) => { if (confirm("Уклонити ову везу?")) void repo.deleteParentChild(data.tree.id, id).then(reload).catch((e) => toast(errorText(e), "error")); }}
+            onEditPartner={(id) => { setPanelOpen(false); setEditLink(data.partnerships.find((p) => p.id === id) ?? null); }}
             onUnlinkPartner={(id) => { if (confirm("Уклонити ову везу?")) void repo.deletePartnership(data.tree.id, id).then(reload).catch((e) => toast(errorText(e), "error")); }}
           />
+          <PartnershipDialog partnership={editLink} graph={graph} onClose={() => setEditLink(null)}
+            onSave={async (id, patch) => { try { await repo.updatePartnership(data.tree.id, id, patch); setEditLink(null); await reload(); toast("Сачувано."); } catch (e) { toast(errorText(e), "error"); } }}
+            onDelete={(p) => { if (!confirm("Обрисати ову везу? Особе остају у стаблу.")) return; setEditLink(null); void repo.deletePartnership(data.tree.id, p.id).then(reload).catch((e) => toast(errorText(e), "error")); }} />
           <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} repo={repo} graph={graph} treeId={data.tree.id} treeName={data.tree.name} rootId={rootId} />
           <PersonDialog open={dialog.open} onClose={() => setDialog({ open: false })} onSubmit={onSubmit}
             graph={graph} treeId={data.tree.id} editing={dialog.editing} target={dialog.target}

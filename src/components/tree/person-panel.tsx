@@ -17,12 +17,12 @@ const REL_SR: Record<string, string> = { biological: "", adoptive: " (усвој
 const STATUS_SR: Record<string, string> = { active: "", divorced: " · развод", separated: " · раздвојени", widowed: " · удовац/удовица", annulled: " · поништен" };
 
 export function PersonPanel({
-  person, graph, rootId, media, repo, canEdit, onClose, onEdit, onAdd, onMakeRoot, onDelete, onPhoto, onPick, onUnlinkParent, onUnlinkPartner,
+  person, graph, rootId, media, repo, canEdit, onClose, onEdit, onAdd, onMakeRoot, onDelete, onPhoto, onPick, onUnlinkParent, onUnlinkPartner, onEditPartner,
 }: {
   person: Person | null; graph: FamilyGraph; rootId: string | null; media: Media[]; repo: Repo; canEdit: boolean;
   onClose: () => void; onEdit: (p: Person) => void; onAdd: (t: RelationTarget) => void; onMakeRoot: (p: Person) => void;
   onDelete: (p: Person) => void; onPhoto: (p: Person, file: File) => void; onPick: (id: string) => void;
-  onUnlinkParent: (edgeId: string) => void; onUnlinkPartner: (partnershipId: string) => void;
+  onUnlinkParent: (edgeId: string) => void; onUnlinkPartner: (partnershipId: string) => void; onEditPartner: (partnershipId: string) => void;
 }) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,11 +51,12 @@ export function PersonPanel({
   const birth = formatPartialDate({ date: person.birth_date, precision: person.birth_date_precision });
   const death = formatPartialDate({ date: person.death_date, precision: person.death_date_precision });
 
-  const Link = ({ p, suffix, onUnlink }: { p: Person; suffix?: string; onUnlink?: () => void }) => (
+  const Link = ({ p, suffix, onUnlink, onEdit }: { p: Person; suffix?: string; onUnlink?: () => void; onEdit?: () => void }) => (
     <li className="flex items-center gap-1">
       <button type="button" onClick={() => onPick(p.id)} className="flex-1 truncate rounded-lg px-2 py-1.5 text-left hover:bg-surface-2">
         {personDisplayName(p)}<span className="text-xs text-muted">{suffix}</span>
       </button>
+      {canEdit && onEdit && <button type="button" aria-label="Измени везу" data-testid="edit-partnership" onClick={onEdit} className="rounded-lg p-1.5 text-muted hover:bg-surface-2"><Pencil size={14} /></button>}
       {canEdit && onUnlink && <button type="button" aria-label="Уклони везу" onClick={onUnlink} className="rounded-lg p-1.5 text-muted hover:bg-surface-2"><Trash2 size={14} /></button>}
     </li>
   );
@@ -87,7 +88,7 @@ export function PersonPanel({
 
         <div className="grid gap-3 sm:grid-cols-2">
           {parents.length > 0 && <section><h4 className="mb-1 text-xs font-semibold uppercase text-muted">Родитељи</h4><ul>{parents.map((e) => <Link key={e.edge.id} p={e.person} suffix={REL_SR[e.relation]} onUnlink={() => onUnlinkParent(e.edge.id)} />)}</ul></section>}
-          {partners.length > 0 && <section><h4 className="mb-1 text-xs font-semibold uppercase text-muted">Партнери</h4><ul>{partners.map((e) => <Link key={e.partnership.id} p={e.person} suffix={STATUS_SR[e.partnership.status]} onUnlink={() => onUnlinkPartner(e.partnership.id)} />)}</ul></section>}
+          {partners.length > 0 && <section><h4 className="mb-1 text-xs font-semibold uppercase text-muted">Партнери</h4><ul>{partners.map((e) => <Link key={e.partnership.id} p={e.person} suffix={STATUS_SR[e.partnership.status]} onUnlink={() => onUnlinkPartner(e.partnership.id)} onEdit={() => onEditPartner(e.partnership.id)} />)}</ul></section>}
           {children.length > 0 && <section><h4 className="mb-1 text-xs font-semibold uppercase text-muted">Деца</h4><ul>{children.map((e) => <Link key={e.edge.id} p={e.person} suffix={REL_SR[e.relation]} onUnlink={() => onUnlinkParent(e.edge.id)} />)}</ul></section>}
           {siblings.length > 0 && <section><h4 className="mb-1 text-xs font-semibold uppercase text-muted">Браћа и сестре</h4><ul>{siblings.map((s) => <Link key={s.person.id} p={s.person} suffix={s.type === "full" ? "" : s.type === "half" ? " (полу)" : ` (${s.type === "adoptive" ? "усвојени" : "step"})`} />)}</ul></section>}
         </div>

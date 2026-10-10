@@ -69,6 +69,23 @@ try {
   check("5 people after adding relatives", (await nodes()) === 5, String(await nodes()));
   check("inherited last name for child", (await page.locator('[data-testid="person-node"]:has-text("Марко Петровић")').count()) === 1);
 
+  // 3b. edit a partnership in place (divorced -> active) without re-entering the partner
+  const label = () => page.locator('.react-flow__edge-text:has-text("развод")').count();
+  check("divorced label shown", (await label()) === 1, String(await label()));
+  await page.getByLabel("Цело стабло").click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-testid="person-node"]:has-text("Јован")').first().click();
+  await page.getByTestId("open-panel").click();
+  await page.getByTestId("person-panel").waitFor();
+  await page.getByTestId("edit-partnership").first().click();
+  await page.getByTestId("partnership-dialog").waitFor();
+  await page.locator('[data-testid="pe-status"] button:has-text("Траје")').click();
+  await page.getByTestId("save-partnership").click();
+  await page.getByTestId("partnership-dialog").waitFor({ state: "hidden" });
+  await page.waitForTimeout(300);
+  check("partnership edited in place", (await label()) === 0, String(await label()));
+  check("still 5 people", (await nodes()) === 5);
+
   // 4. validation: Marko cannot become Milan's parent (cycle); too-young parent warning
   await page.locator('[data-testid="person-node"]:has-text("Милан")').first().click();
   await page.getByTestId("open-panel").click();
