@@ -36,9 +36,9 @@ function PersonNodeView({ data, selected }: NodeProps<PersonFlowNode>) {
     <div
       data-testid="person-node"
       data-person-id={p.id}
-      style={{ width: NODE_W, height: NODE_H, background: genColors(data.gen, data.side).fill, borderColor: genColors(data.gen, data.side).border }}
+      style={{ width: NODE_W, height: NODE_H, animationDelay: `${Math.min(Math.abs(data.gen), 6) * 70}ms`, background: genColors(data.gen, data.side).fill, borderColor: genColors(data.gen, data.side).border }}
       className={cn(
-        "relative flex items-center gap-2.5 rounded-[28px] border-2 px-2.5 shadow-candy transition",
+        "pop-in relative flex items-center gap-2.5 rounded-[28px] border-2 px-2.5 shadow-candy transition",
         (selected || data.highlighted) && "ring-4 ring-primary/40",
         !p.is_living && "opacity-90",
       )}

@@ -1,5 +1,5 @@
 "use client";
-import { Crown, FileArchive, Heart, Info, LogOut } from "lucide-react";
+import { Crown, FileArchive, Palette, Heart, Info, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { useRepo } from "@/client/hooks/use-repo";
 import { errorText } from "@/client/repo";
 import { purchasePremium, restorePurchases, billingAvailable } from "@/client/billing";
 import { AppBar } from "@/components/app/app-bar";
+import { getTheme, setTheme, THEMES, type ThemeId } from "@/client/theme";
 import { apkVersionName } from "@/client/update";
 import { UpdateNotice } from "@/components/app/update-notice";
 import { BottomNav } from "@/components/app/bottom-nav";
@@ -35,6 +36,8 @@ export default function SettingsPage() {
   const toast = useToast();
   const [mode, setMode] = useState<EntryMode>("simple");
   const [apkVersion, setApkVersion] = useState("");
+  const [theme, setThemeState] = useState<ThemeId>("bubblegum");
+  useEffect(() => setThemeState(getTheme()), []);
   useEffect(() => { void apkVersionName().then(setApkVersion); }, []);
   const [billing, setBilling] = useState<Billing | null>(null);
 
@@ -61,6 +64,20 @@ export default function SettingsPage() {
     <div className="min-h-dvh pb-24">
       <AppBar title="Подешавања" />
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-4">
+        <Section title="Боје" icon={<Palette size={18} className="text-primary" />}>
+          <div className="flex flex-wrap gap-2" data-testid="theme-picker">
+            {THEMES.map((t) => (
+              <button key={t.id} type="button" data-testid={`theme-${t.id}`} aria-pressed={theme === t.id}
+                onClick={() => { setThemeState(t.id); setTheme(t.id); }}
+                className={`flex items-center gap-2 rounded-full border-2 px-3 py-2 text-sm font-bold transition ${theme === t.id ? "border-primary bg-surface-2" : "border-border"}`}>
+                <span className="flex"><i className="h-5 w-5 rounded-full" style={{ background: t.swatch[0] }} /><i className="-ml-2 h-5 w-5 rounded-full" style={{ background: t.swatch[1] }} /></span>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted">Тамни режим прати подешавање вашег телефона.</p>
+        </Section>
+
         <Section title="Унос података" icon={<Info size={18} className="text-primary" />}>
           <Segmented<EntryMode> testId="settings-mode" value={mode} onChange={changeMode}
             options={[{ value: "simple", label: "Једноставан модел" }, { value: "complex", label: "Сложен модел" }]} />

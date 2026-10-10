@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { NativeBridge } from "@/components/app/native-bridge";
 import { ServiceWorker } from "@/components/app/service-worker";
+import { THEME_BOOT } from "@/client/theme";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
@@ -32,7 +33,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="sr">
+    <html lang="sr" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /></head>
       <body className="font-sans antialiased">
         <ToastProvider>{children}</ToastProvider>
         <ServiceWorker />

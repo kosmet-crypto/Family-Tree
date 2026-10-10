@@ -15,7 +15,7 @@ export function PersonMiniCard({ person, avatarUrl, relation, gen, side, onMore,
   const c = genColors(gen, side);
   return (
     <div data-testid="mini-card" style={{ background: c.fill, borderColor: c.border }}
-      className="pointer-events-auto relative mx-auto flex w-full max-w-sm items-center gap-3 rounded-[28px] border-2 p-3 pr-4 shadow-candy">
+      className="rise-in pointer-events-auto relative mx-auto flex w-full max-w-sm items-center gap-3 rounded-[28px] border-2 p-3 pr-4 shadow-candy">
       {avatarUrl
         // eslint-disable-next-line @next/next/no-img-element
         ? <img src={avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full border-[3px] border-surface object-cover" />
