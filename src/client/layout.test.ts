@@ -92,3 +92,20 @@ describe("family sides", () => {
     expect(Math.max(x(UF), x(GF1), x(GW1))).toBeLessThan(Math.min(x(AM), x(GF2), x(GW2)));
   });
 });
+
+describe("family links", () => {
+  it("gives children of different couples their own bus and colour", async () => {
+    const { familyLinks } = await import("./family-links");
+    // Z+S have R; S also has D and B with another man X (not a partner of Z)
+    const Z = makePerson("Z", "male", null), S = makePerson("S", "female", null), X = makePerson("X", "male", null);
+    const R = makePerson("R", "female", null), D = makePerson("D", "female", null), B = makePerson("B", "male", null);
+    const g = new FamilyGraph([Z, S, X, R, D, B], [edge(Z, R), edge(S, R), edge(S, D), edge(X, D), edge(S, B), edge(X, B)], [marriage(Z, S), marriage(S, X, "divorced")]);
+    const links = familyLinks(g, layoutTree(g, R.id));
+    const byChild = new Map(links.map((l) => [l.child, l]));
+    expect(links).toHaveLength(3);
+    expect(byChild.get(D.id)!.busY).toBe(byChild.get(B.id)!.busY);   // same couple -> one shared bus
+    expect(byChild.get(D.id)!.tone).toBe(byChild.get(B.id)!.tone);
+    expect(byChild.get(R.id)!.busY).not.toBe(byChild.get(D.id)!.busY); // other couple -> other bus
+    expect(byChild.get(R.id)!.tone).not.toBe(byChild.get(D.id)!.tone);
+  });
+});

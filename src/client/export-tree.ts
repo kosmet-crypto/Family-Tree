@@ -5,6 +5,7 @@ import { lifespanLabel } from "@/lib/dates";
 import type { FamilyGraph } from "@/lib/graph/family-graph";
 import { pdfFromJpeg, type PageSize } from "@/lib/export/pdf";
 import { personDisplayName } from "@/lib/search";
+import { familyLinks, linkPath } from "./family-links";
 import { layoutTree, NODE_H, NODE_W } from "./layout";
 
 const GEN = ["#ffe0ea", "#ffecd2", "#fff7c2", "#d8f5df", "#d6ecff", "#e8ddff"];
@@ -72,24 +73,18 @@ export function renderTreeCanvas(graph: FamilyGraph, rootId: string | null, tree
   }
 
   const ox = PAD, oy = PAD + HEADER;
-  const cx = (id: string) => ox + layout.positions.get(id)!.x + NODE_W / 2;
-  const top = (id: string) => oy + layout.positions.get(id)!.y;
 
-  // links: parent -> child as elbows, partners as a short line between the cards
+  // links: one coloured bus per family (same routing as on screen), partners as a short line between the cards
   g.lineCap = "round";
+  g.lineWidth = 3.5;
+  for (const l of familyLinks(graph, layout)) {
+    g.strokeStyle = GEN_B[l.tone]!;
+    g.setLineDash(l.dashed ? [8, 6] : []);
+    g.stroke(new Path2D(linkPath({ ...l, startX: l.startX + ox, startY: l.startY + oy, busY: l.busY + oy, endX: l.endX + ox, endY: l.endY + oy })));
+  }
   g.lineWidth = 3;
   for (const id of graph.persons.keys()) {
     if (!layout.positions.has(id)) continue;
-    for (const e of graph.childEdgesOf(id)) {
-      if (!layout.positions.has(e.child_id)) continue;
-      const x1 = cx(e.parent_id), y1 = top(e.parent_id) + NODE_H, x2 = cx(e.child_id), y2 = top(e.child_id);
-      const my = (y1 + y2) / 2;
-      g.strokeStyle = "#c9b8e8";
-      g.setLineDash(e.relation === "biological" ? [] : [8, 6]);
-      g.beginPath();
-      g.moveTo(x1, y1); g.lineTo(x1, my); g.lineTo(x2, my); g.lineTo(x2, y2);
-      g.stroke();
-    }
     for (const p of graph.partnershipsOf(id)) {
       if (p.person1_id !== id || !layout.positions.has(p.person2_id)) continue;
       const a = layout.positions.get(p.person1_id)!, b = layout.positions.get(p.person2_id)!;

@@ -2,12 +2,13 @@
 // Interactive tree: pan & pinch-zoom like a map, "fly to" a person from the search box.
 
 import {
-  Background, Controls, MarkerType, Panel, ReactFlow, ReactFlowProvider, useReactFlow,
-  type Edge, type NodeMouseHandler,
+  Background, BaseEdge, Controls, Panel, ReactFlow, ReactFlowProvider, useReactFlow,
+  type Edge, type EdgeProps, type NodeMouseHandler,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { FamilyGraph } from "@/lib/graph/family-graph";
-import type { ParentChild, Partnership } from "@/lib/types/db";
+import type { Partnership } from "@/lib/types/db";
+import { familyLinks, linkPath, type FamilyLink } from "@/client/family-links";
 import { layoutTree, NODE_H, NODE_W } from "@/client/layout";
 import { PersonNode, SIDE_TINT, type PersonFlowNode } from "./person-node";
 
@@ -18,10 +19,11 @@ export interface CanvasApi {
 
 const nodeTypes = { person: PersonNode };
 
-function edgeStyleForParent(e: ParentChild) {
-  const dashed = e.relation !== "biological";
-  return { stroke: "var(--edge)", strokeWidth: 3, strokeLinecap: "round" as const, strokeDasharray: dashed ? "6 5" : undefined };
+function FamilyEdge({ data }: EdgeProps) {
+  const l = (data as { link: FamilyLink }).link;
+  return <BaseEdge path={linkPath(l)} style={{ stroke: `var(--gen-${l.tone}b)`, strokeWidth: 3.5, strokeLinecap: "round", strokeDasharray: l.dashed ? "7 6" : undefined, fill: "none" }} />;
 }
+const edgeTypes = { family: FamilyEdge };
 
 function edgeStyleForPartner(p: Partnership) {
   const ended = p.status === "divorced" || p.status === "separated" || p.status === "annulled";
@@ -49,13 +51,12 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
     [layout, graph, selectedId, avatars, rootId],
   );
 
+  const links = useMemo(() => familyLinks(graph, layout), [graph, layout]);
+
   const edges = useMemo<Edge[]>(() => {
     const out: Edge[] = [];
     const seenPartnerships = new Set<string>();
     for (const id of graph.persons.keys()) {
-      for (const e of graph.childEdgesOf(id)) {
-        out.push({ id: e.id, source: e.parent_id, target: e.child_id, type: "smoothstep", style: edgeStyleForParent(e), markerEnd: e.relation === "biological" ? undefined : { type: MarkerType.ArrowClosed, color: "var(--edge)" } });
-      }
       for (const p of graph.partnershipsOf(id)) {
         if (seenPartnerships.has(p.id)) continue;
         seenPartnerships.add(p.id);
@@ -66,8 +67,9 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
         out.push({ id: p.id, source: left, target: right, sourceHandle: "r", targetHandle: "l", type: a.y === b.y ? "straight" : "smoothstep", style: edgeStyleForPartner(p) });
       }
     }
+    for (const l of links) out.push({ id: l.id, source: l.parents[0]!, target: l.child, type: "family", data: { link: l }, selectable: false, focusable: false });
     return out;
-  }, [graph, layout]);
+  }, [graph, layout, links]);
 
   const flyTo = useCallback((personId: string) => {
     const pos = positionsRef.current.get(personId);
@@ -86,6 +88,7 @@ function Canvas({ graph, rootId, selectedId, avatars, onSelect, onReady }: {
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       onPaneClick={() => onSelect(null)}
       nodesConnectable={false}
