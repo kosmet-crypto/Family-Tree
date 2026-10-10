@@ -49,6 +49,33 @@
   }
 }
 
+/* Colour themes (the default is bubblegum, defined above). Dark variants follow the system setting. */
+:root[data-theme="ocean"] {
+  --bg: #f2f9ff; --surface-2: #e6f2fc; --border: #d4e8f7; --text: #11283a; --muted: #5f7a90;
+  --primary: #0b7fc7; --accent: #12b8a6; --edge: #a9cbe4; --focus: #0b7fc744; --shadow: 0 6px 20px -8px rgb(11 127 199 / 0.35);
+}
+:root[data-theme="forest"] {
+  --bg: #f6faf2; --surface-2: #e9f3e2; --border: #d9e9cf; --text: #1d2a1f; --muted: #66796a;
+  --primary: #2f8f55; --accent: #e8883a; --edge: #b5cfa8; --focus: #2f8f5544; --shadow: 0 6px 20px -8px rgb(47 143 85 / 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="ocean"] {
+    --bg: #0e1722; --surface: #162231; --surface-2: #1d2d40; --border: #2a3f57; --text: #e8f3fc; --muted: #9db4c8;
+    --primary: #5cc0ff; --primary-fg: #06202f; --accent: #4fd9c8; --edge: #46607a; --focus: #5cc0ff55;
+  }
+  :root[data-theme="forest"] {
+    --bg: #121a14; --surface: #1a251c; --surface-2: #223027; --border: #2f4235; --text: #e9f4ea; --muted: #a3b8a7;
+    --primary: #7fd69b; --primary-fg: #0c2616; --accent: #f0a566; --edge: #52705a; --focus: #7fd69b55;
+  }
+}
+
+/* Motion: cards pop in generation by generation; everything is skipped for reduced-motion users. */
+@keyframes rb-pop { from { opacity: 0; transform: scale(0.86) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rb-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.pop-in { animation: rb-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.rise-in { animation: rb-rise 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .pop-in, .rise-in { animation: none; } }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -76,6 +103,6 @@ body {
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 
 /* React Flow in app colours */
-.react-flow { --xy-background-color: var(--bg); --xy-edge-stroke: var(--edge); --xy-controls-button-background-color: var(--surface); --xy-controls-button-color: var(--text); --xy-controls-button-border-color: var(--border); --xy-minimap-background-color: var(--surface); }
+.react-flow { --xy-background-color: transparent; --xy-edge-stroke: var(--edge); --xy-controls-button-background-color: var(--surface); --xy-controls-button-color: var(--text); --xy-controls-button-border-color: var(--border); --xy-minimap-background-color: var(--surface); }
 .react-flow__attribution { display: none; }
 dialog::backdrop { background: rgb(0 0 0 / 0.45); }

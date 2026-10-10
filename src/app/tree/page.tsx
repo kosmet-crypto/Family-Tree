@@ -10,6 +10,7 @@ import { useRepo } from "@/client/hooks/use-repo";
 import { useTree } from "@/client/hooks/use-tree";
 import { errorText } from "@/client/repo";
 import { AppBar } from "@/components/app/app-bar";
+import { TreeArt } from "@/components/app/tree-art";
 import { ExportSheet } from "@/components/tree/export-sheet";
 import { GenerationList } from "@/components/tree/generation-list";
 import { PersonDialog, type PersonDialogResult, type RelationTarget } from "@/components/tree/person-dialog";
@@ -172,6 +173,7 @@ function TreeScreen() {
       </AppBar>
 
       <main className="relative min-h-0 flex-1">
+        <TreeArt size={300} className="pointer-events-none absolute bottom-24 left-1/2 -translate-x-1/2 opacity-[0.09]" />
         {!data || !graph ? (
           <p className="p-6 text-center text-muted">Учитавање…</p>
         ) : data.persons.length === 0 ? (

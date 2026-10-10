@@ -7,6 +7,7 @@ import { useAuth } from "@/client/hooks/use-auth";
 import { useRepo } from "@/client/hooks/use-repo";
 import { errorText, type TreeSummary } from "@/client/repo";
 import { importBackupFile } from "@/client/backup";
+import { TreeArt } from "@/components/app/tree-art";
 import { UpdateNotice } from "@/components/app/update-notice";
 import { AppBar } from "@/components/app/app-bar";
 import { BottomNav } from "@/components/app/bottom-nav";
@@ -71,8 +72,8 @@ export default function Home() {
           <p className="py-12 text-center text-muted">Учитавање…</p>
         ) : trees.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <TreeDeciduous size={56} className="text-primary" />
-            <p className="text-lg font-medium">Још немате ниједно стабло</p>
+            <TreeArt size={150} className="rise-in" />
+            <p className="text-lg font-extrabold">Још немате ниједно стабло</p>
             <p className="max-w-xs text-sm text-muted">Почните са собом, па додајте родитеље, децу и партнере.</p>
           </div>
         ) : (

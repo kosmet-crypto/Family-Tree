@@ -140,6 +140,11 @@ try {
   await page.goto(`${BASE}/settings/`);
   const credit = await page.getByTestId("credit").innerText();
   check("developer credit", credit === "Developed by: Ivan S. - Epicurus001, Oslo", credit);
+  await page.getByTestId("theme-ocean").click();
+  check("theme applied", (await page.evaluate(() => document.documentElement.dataset.theme)) === "ocean");
+  await page.reload();
+  check("theme persists after reload", (await page.evaluate(() => document.documentElement.dataset.theme)) === "ocean");
+  await page.getByTestId("theme-bubblegum").click();
   await page.goto(`${BASE}/data/`);
   await page.getByTestId("export-json").waitFor();
   check("data screen has update check", (await page.getByTestId("check-update").count()) === 1);
